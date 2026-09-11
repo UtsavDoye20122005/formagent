@@ -113,3 +113,36 @@ grant select, insert, update, delete on public.responses  to authenticated;
 grant all on public.workspaces to service_role;
 grant all on public.forms      to service_role;
 grant all on public.responses  to service_role;
+
+-- ---------------------------------------------------------------------------
+-- Public access
+--
+-- A person filling in a form is not logged in. Rather than relying on a secret
+-- server key, these two policies let an anonymous visitor do exactly two things
+-- and nothing else: read a form that is open, and post an answer to it.
+-- They can never read anyone's responses.
+-- ---------------------------------------------------------------------------
+
+drop policy if exists "anyone may read an open form" on public.forms;
+create policy "anyone may read an open form"
+  on public.forms
+  for select
+  to anon, authenticated
+  using (is_open = true);
+
+drop policy if exists "anyone may answer an open form" on public.responses;
+create policy "anyone may answer an open form"
+  on public.responses
+  for insert
+  to anon, authenticated
+  with check (
+    exists (
+      select 1 from public.forms f
+      where f.id = responses.form_id
+        and f.is_open
+    )
+  );
+
+grant usage on schema public to anon;
+grant select on public.forms to anon;
+grant insert on public.responses to anon;
