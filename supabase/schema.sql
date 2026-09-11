@@ -93,3 +93,23 @@ create policy "only the form owner deletes responses"
         and f.user_id = auth.uid()
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- Table permissions
+--
+-- Supabase usually grants these automatically for new tables, but that depends
+-- on the "Automatically expose new tables" project setting. Setting them here
+-- explicitly means this schema works on any Supabase project, however it was
+-- configured. Row Level Security above still decides which ROWS each person
+-- sees; these grants only decide who may touch the table at all.
+-- ---------------------------------------------------------------------------
+
+grant usage on schema public to authenticated, service_role;
+
+grant select, insert, update, delete on public.workspaces to authenticated;
+grant select, insert, update, delete on public.forms      to authenticated;
+grant select, insert, update, delete on public.responses  to authenticated;
+
+grant all on public.workspaces to service_role;
+grant all on public.forms      to service_role;
+grant all on public.responses  to service_role;
