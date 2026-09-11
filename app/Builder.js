@@ -1,0 +1,451 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import FormFields from "./FormFields.js";
+
+const EXAMPLES = [
+  "Sign-up form for our AIESEC winter volunteering programme — full name, college email, phone, college, year of study, which country they prefer from Turkey, Egypt, Vietnam, Poland, and why they want to go.",
+  "Feedback form after a workshop: name (optional), rating out of 5, what was most useful, what we should improve, and would they attend again.",
+  "Guest registration for a campus tech talk — name, email, branch, whether they need a parking pass, and t-shirt size.",
+];
+
+const TYPES = [
+  ["text", "Short text"],
+  ["textarea", "Long text"],
+  ["email", "Email"],
+  ["tel", "Phone"],
+  ["number", "Number"],
+  ["url", "Link"],
+  ["date", "Date"],
+  ["time", "Time"],
+  ["select", "Dropdown"],
+  ["radio", "Pick one"],
+  ["checkbox", "Pick many"],
+  ["boolean", "Yes / no"],
+  ["rating", "Rating"],
+];
+
+export default function Builder({ workspaces: initialWorkspaces = [], loadError = "" }) {
+  const [workspaces, setWorkspaces] = useState(initialWorkspaces);
+  const [workspaceId, setWorkspaceId] = useState("");
+  const [newSection, setNewSection] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+
+  const [instructions, setInstructions] = useState("");
+  const [form, setForm] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [engine, setEngine] = useState("");
+  const [published, setPublished] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [preview, setPreview] = useState({});
+
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recognitionRef = useRef(null);
+  const baseTextRef = useRef("");
+
+  useEffect(() => {
+    const SR =
+      typeof window !== "undefined" &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
+    if (!SR) return;
+    setVoiceSupported(true);
+    const rec = new SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-IN";
+    rec.onresult = (event) => {
+      let finalText = "";
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const chunk = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += chunk;
+        else interim += chunk;
+      }
+      if (finalText) baseTextRef.current = `${baseTextRef.current}${finalText} `;
+      setInstructions((baseTextRef.current + interim).replace(/\s+/g, " ").trimStart());
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    recognitionRef.current = rec;
+    return () => {
+      try {
+        rec.stop();
+      } catch {}
+    };
+  }, []);
+
+  function toggleMic() {
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    if (listening) {
+      rec.stop();
+      setListening(false);
+      return;
+    }
+    baseTextRef.current = instructions ? `${instructions.trim()} ` : "";
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+    }
+  }
+
+  async function generate() {
+    if (listening) toggleMic();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    setPublished(null);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ instructions }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Something went wrong.");
+      setForm(data.form);
+      setEngine(data.engine);
+      setNotice(data.notice || "");
+      setPreview({});
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publish() {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/forms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ form, workspaceId: workspaceId || null }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not publish.");
+      setPublished(`${window.location.origin}/f/${data.id}`);
+      setCopied(false);
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addSection() {
+    const name = newSection.trim();
+    if (!name) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not add that section.");
+      setWorkspaces((w) => [...w, data.workspace]);
+      setWorkspaceId(data.workspace.id);
+      setNewSection("");
+      setAddingSection(false);
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function patchField(index, patch) {
+    setForm((f) => {
+      const fields = f.fields.map((fl, i) => (i === index ? { ...fl, ...patch } : fl));
+      return { ...f, fields };
+    });
+  }
+
+  function moveField(index, delta) {
+    setForm((f) => {
+      const fields = [...f.fields];
+      const target = index + delta;
+      if (target < 0 || target >= fields.length) return f;
+      [fields[index], fields[target]] = [fields[target], fields[index]];
+      return { ...f, fields };
+    });
+  }
+
+  function removeField(index) {
+    setForm((f) => ({ ...f, fields: f.fields.filter((_, i) => i !== index) }));
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(published);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {}
+  }
+
+  return (
+    <>
+      <h1>Describe a form. Share the link.</h1>
+      <p className="lede">
+        Speak or type what you need to collect. FormAgent writes the questions, gives you a
+        link anyone can open, and keeps every answer in one place.
+      </p>
+
+      {loadError && <div className="note bad">{loadError}</div>}
+
+      <div className="card">
+        <label className="label" htmlFor="instructions">
+          What should this form collect?
+        </label>
+        <textarea
+          id="instructions"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="e.g. Registration for our AI workshop — name, college email, phone, year of study, and which track they want: Beginner, Intermediate or Advanced."
+          style={{ minHeight: 120 }}
+        />
+
+        <div className="row" style={{ marginTop: 12 }}>
+          <button
+            className="btn primary"
+            onClick={generate}
+            disabled={busy || instructions.trim().length < 3}
+          >
+            {busy ? <><span className="spin" /> Working…</> : "Build the form"}
+          </button>
+
+          {voiceSupported && (
+            <button
+              className={`btn mic${listening ? " on" : ""}`}
+              onClick={toggleMic}
+              disabled={busy}
+              aria-pressed={listening}
+            >
+              {listening ? "◼ Stop recording" : "🎤 Speak instead"}
+            </button>
+          )}
+
+          {instructions && (
+            <button className="btn ghost small" onClick={() => setInstructions("")}>
+              Clear
+            </button>
+          )}
+        </div>
+
+        {listening && (
+          <p className="hint" style={{ marginTop: 10 }}>
+            Listening… speak naturally, then press stop.
+          </p>
+        )}
+
+        {!voiceSupported && (
+          <p className="hint" style={{ marginTop: 10 }}>
+            Voice input needs Chrome, Edge or Safari. Typing works everywhere.
+          </p>
+        )}
+
+        {!form && (
+          <div className="examples">
+            {EXAMPLES.map((ex, i) => (
+              <button className="example" key={i} onClick={() => setInstructions(ex)}>
+                {ex.split("—")[0].trim()}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {error && <div className="note bad" style={{ marginTop: 18 }}>{error}</div>}
+
+      {form && (
+        <>
+          <div className="card">
+            <div className="spread" style={{ marginBottom: 16 }}>
+              <h2>Check it over</h2>
+              <span className={`tag${engine === "claude" ? " accent" : ""}`}>
+                {engine === "claude" ? "Written by Claude" : "Built by the basic parser"}
+              </span>
+            </div>
+
+            {notice && <div className="note info">{notice}</div>}
+
+            <div className="field">
+              <label className="label" htmlFor="f-title">Form title</label>
+              <input
+                id="f-title"
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="f-desc">Description shown to people (optional)</label>
+              <input
+                id="f-desc"
+                type="text"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+
+            <h2 style={{ marginTop: 22, marginBottom: 10 }}>
+              Questions <span className="tag">{form.fields.length}</span>
+            </h2>
+
+            {form.fields.map((f, i) => (
+              <div className="preview-field" key={`${f.id}-${i}`}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <input
+                    type="text"
+                    value={f.label}
+                    onChange={(e) => patchField(i, { label: e.target.value })}
+                    style={{ fontWeight: 560 }}
+                  />
+                  <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                    <select
+                      value={f.type}
+                      onChange={(e) => patchField(i, { type: e.target.value })}
+                      style={{ width: "auto", padding: "5px 9px", fontSize: 13 }}
+                      aria-label={`Type for ${f.label}`}
+                    >
+                      {TYPES.map(([v, l]) => (
+                        <option key={v} value={v}>{l}</option>
+                      ))}
+                    </select>
+                    <label className="tag" style={{ cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={f.required}
+                        onChange={(e) => patchField(i, { required: e.target.checked })}
+                        style={{ accentColor: "var(--accent)" }}
+                      />
+                      Required
+                    </label>
+                  </div>
+                  {f.options?.length > 0 && (
+                    <p className="meta">Options: {f.options.join(" · ")}</p>
+                  )}
+                </div>
+                <div className="row" style={{ gap: 4, flexWrap: "nowrap" }}>
+                  <button className="btn ghost small" onClick={() => moveField(i, -1)} disabled={i === 0} aria-label="Move up">↑</button>
+                  <button className="btn ghost small" onClick={() => moveField(i, 1)} disabled={i === form.fields.length - 1} aria-label="Move down">↓</button>
+                  <button className="btn ghost small" onClick={() => removeField(i)} aria-label={`Remove ${f.label}`}>✕</button>
+                </div>
+              </div>
+            ))}
+
+            <div className="publish-bar">
+              <div className="section-pick">
+                <label className="label" htmlFor="workspace">Save into</label>
+                {addingSection ? (
+                  <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                    <input
+                      type="text"
+                      value={newSection}
+                      autoFocus
+                      placeholder="e.g. College"
+                      maxLength={60}
+                      onChange={(e) => setNewSection(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); addSection(); }
+                        if (e.key === "Escape") { setAddingSection(false); setNewSection(""); }
+                      }}
+                    />
+                    <button className="btn small primary" onClick={addSection} disabled={busy || !newSection.trim()}>
+                      Add
+                    </button>
+                    <button
+                      className="btn small ghost"
+                      onClick={() => { setAddingSection(false); setNewSection(""); }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
+                    <select
+                      id="workspace"
+                      value={workspaceId}
+                      onChange={(e) => setWorkspaceId(e.target.value)}
+                    >
+                      <option value="">Unfiled</option>
+                      {workspaces.map((w) => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))}
+                    </select>
+                    <button className="btn small" onClick={() => setAddingSection(true)} type="button">
+                      + New section
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="row" style={{ flexWrap: "nowrap" }}>
+                <button className="btn" onClick={generate} disabled={busy}>Rebuild</button>
+                <button className="btn primary" onClick={publish} disabled={busy || form.fields.length === 0}>
+                  {busy ? <><span className="spin" /> Publishing…</> : "Publish & get link"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {published && (
+            <div className="card">
+              <div className="note good" style={{ marginBottom: 14 }}>
+                Your form is live. Anyone with this link can fill it in — no account needed.
+              </div>
+              <div className="linkbox">
+                <code>{published}</code>
+                <button className="btn small primary" onClick={copyLink}>
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <div className="row" style={{ marginTop: 14 }}>
+                <a className="btn small" href={published} target="_blank" rel="noreferrer">Open the form</a>
+                <a className="btn small" href="/dashboard">See responses</a>
+              </div>
+            </div>
+          )}
+
+          <div className="card">
+            <h2 style={{ marginBottom: 14 }}>Preview</h2>
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 18 }}>
+              <h2 style={{ fontSize: 22 }}>{form.title}</h2>
+              {form.description && <p className="lede" style={{ marginBottom: 20 }}>{form.description}</p>}
+              <FormFields
+                fields={form.fields}
+                values={preview}
+                onChange={(id, v) => setPreview((p) => ({ ...p, [id]: v }))}
+              />
+              <button className="btn primary" style={{ marginTop: 8 }} disabled>
+                {form.submitLabel}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
