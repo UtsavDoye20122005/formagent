@@ -31,29 +31,44 @@ export async function POST(request) {
     return NextResponse.json({ error: "That recording is too long. Keep it under a couple of minutes." }, { status: 413 });
   }
 
-  const body = new FormData();
-  body.append("file", audio, "speech.webm");
-  body.append("model", process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo");
-  body.append("response_format", "json");
-  body.append(
-    "prompt",
-    "The speaker is describing a web form to collect details from people, such as name, email, phone, college, year of study, and multiple choice options."
-  );
+  // Not every Groq account has every Whisper model, so try them in turn.
+  const models = [
+    process.env.GROQ_WHISPER_MODEL,
+    "whisper-large-v3-turbo",
+    "whisper-large-v3",
+  ].filter(Boolean);
 
-  const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}` },
-    body,
-  });
+  let lastDetail = "";
 
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    return NextResponse.json(
-      { error: `Could not transcribe that: ${detail.slice(0, 200)}` },
-      { status: 502 }
+  for (const model of [...new Set(models)]) {
+    const body = new FormData();
+    body.append("file", audio, "speech.webm");
+    body.append("model", model);
+    body.append("response_format", "json");
+    body.append(
+      "prompt",
+      "The speaker is describing a web form to collect details from people, such as name, email, phone, college, year of study, and multiple choice options."
     );
+
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}` },
+      body,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json({ text: String(data?.text || "").trim() });
+    }
+
+    lastDetail = await res.text().catch(() => "");
+    const missingModel =
+      (res.status === 404 || res.status === 400) && /model|decommission|deprecat/i.test(lastDetail);
+    if (!missingModel) break;
   }
 
-  const data = await res.json();
-  return NextResponse.json({ text: String(data?.text || "").trim() });
+  return NextResponse.json(
+    { error: `Could not transcribe that: ${lastDetail.slice(0, 200)}` },
+    { status: 502 }
+  );
 }
