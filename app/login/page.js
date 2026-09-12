@@ -7,6 +7,12 @@ import LoginForm from "./LoginForm.js";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in — FormAgent" };
 
+const POINTS = [
+  ["1", "Say what you need to collect — out loud or typed."],
+  ["2", "Check the questions it writes, change anything."],
+  ["3", "Share the link. Answers land in one place."],
+];
+
 export default async function LoginPage() {
   if (!isConfigured()) {
     return (
@@ -20,12 +26,41 @@ export default async function LoginPage() {
   if (user) redirect("/");
 
   return (
-    <main className="shell narrow auth-shell">
-      <div className="brand" style={{ justifyContent: "center", marginBottom: 26 }}>
-        <span className="mark">F</span>
-        <span>FormAgent</span>
-      </div>
-      <LoginForm />
+    <main className="auth-wrap">
+      <aside className="auth-art">
+        <div className="brand">
+          <span className="mark">F</span>
+          <span>FormAgent</span>
+        </div>
+
+        <div className="auth-pitch">
+          <p className="eyebrow">Forms without the fiddling</p>
+          <h2>Describe the form. Get the link.</h2>
+          <p>
+            No dragging fields around. No twenty clicks per question. Just say what
+            you want and send the link.
+          </p>
+
+          <ul className="auth-points">
+            {POINTS.map(([n, text]) => (
+              <li key={n}>
+                <span className="dot" aria-hidden="true">{n}</span>
+                <span>{text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="hint" style={{ margin: 0 }}>
+          Your forms and sections stay private to your account.
+        </p>
+      </aside>
+
+      <section className="auth-form-side">
+        <div className="auth-card">
+          <LoginForm />
+        </div>
+      </section>
     </main>
   );
 }

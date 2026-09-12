@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateWithClaude } from "../../../lib/ai.js";
+import { generateWithGroq, generateWithClaude, aiProvider } from "../../../lib/ai.js";
 import { parseInstructions } from "../../../lib/parse.js";
 import { normalizeForm } from "../../../lib/schema.js";
 import { currentUser } from "../../../lib/supabase/server.js";
@@ -27,20 +27,28 @@ export async function POST(request) {
     );
   }
 
+  const provider = aiProvider();
   let engine = "rules";
   let notice = "";
   let draft = null;
 
-  if (process.env.ANTHROPIC_API_KEY) {
+  if (provider === "groq") {
+    try {
+      draft = await generateWithGroq(instructions);
+      if (draft) engine = "groq";
+    } catch (err) {
+      notice = `The AI could not be reached, so a basic parser built this instead. (${String(err.message || err).slice(0, 120)})`;
+    }
+  } else if (provider === "claude") {
     try {
       draft = await generateWithClaude(instructions);
       if (draft) engine = "claude";
     } catch (err) {
-      notice = "Claude could not be reached, so a basic parser built this instead.";
+      notice = `The AI could not be reached, so a basic parser built this instead. (${String(err.message || err).slice(0, 120)})`;
     }
   } else {
     notice =
-      "Running without an Anthropic API key — a basic built-in parser built this. Add ANTHROPIC_API_KEY for much better forms.";
+      "No AI key is set, so a basic word-matching parser built this. Add a free GROQ_API_KEY for forms that actually understand what you said.";
   }
 
   if (!draft) draft = parseInstructions(instructions);

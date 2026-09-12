@@ -25,7 +25,7 @@ const TYPES = [
   ["rating", "Rating"],
 ];
 
-export default function Builder({ workspaces: initialWorkspaces = [], loadError = "" }) {
+export default function Builder({ workspaces: initialWorkspaces = [], loadError = "", voiceApi = false }) {
   const [workspaces, setWorkspaces] = useState(initialWorkspaces);
   const [workspaceId, setWorkspaceId] = useState("");
   const [newSection, setNewSection] = useState("");
@@ -42,11 +42,24 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
   const [preview, setPreview] = useState({});
 
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const recognitionRef = useRef(null);
   const baseTextRef = useRef("");
+  const recorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
   useEffect(() => {
+    if (voiceApi) {
+      // Recording + Whisper is available; the browser's own recogniser is only
+      // needed as a fallback, so don't wire it up at all.
+      setVoiceSupported(
+        typeof window !== "undefined" &&
+          Boolean(navigator.mediaDevices?.getUserMedia) &&
+          typeof window.MediaRecorder !== "undefined"
+      );
+      return;
+    }
     const SR =
       typeof window !== "undefined" &&
       (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -75,9 +88,70 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
         rec.stop();
       } catch {}
     };
-  }, []);
+  }, [voiceApi]);
+
+  // --- recording, then Whisper on the server ------------------------------
+
+  async function startRecording() {
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size < 1200) return;
+
+        setTranscribing(true);
+        try {
+          const fd = new FormData();
+          fd.append("audio", blob, "speech.webm");
+          const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+          if (res.status === 401) {
+            window.location.href = "/login";
+            return;
+          }
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Could not transcribe that.");
+          const text = String(data.text || "").trim();
+          if (text) {
+            setInstructions((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+          }
+        } catch (err) {
+          setError(String(err.message || err));
+        } finally {
+          setTranscribing(false);
+        }
+      };
+
+      recorderRef.current = recorder;
+      recorder.start();
+      setListening(true);
+    } catch {
+      setError("Could not use the microphone. Check the browser has permission.");
+      setListening(false);
+    }
+  }
 
   function toggleMic() {
+    if (voiceApi) {
+      if (listening) {
+        try {
+          recorderRef.current?.stop();
+        } catch {}
+        setListening(false);
+      } else {
+        startRecording();
+      }
+      return;
+    }
+
     const rec = recognitionRef.current;
     if (!rec) return;
     if (listening) {
@@ -214,35 +288,27 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
 
       {loadError && <div className="note bad">{loadError}</div>}
 
-      <div className="card">
-        <label className="label" htmlFor="instructions">
+      <div className="compose">
+        <label className="label" htmlFor="instructions" style={{ position: "absolute", left: -9999 }}>
           What should this form collect?
         </label>
         <textarea
           id="instructions"
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
-          placeholder="e.g. Registration for our AI workshop — name, college email, phone, year of study, and which track they want: Beginner, Intermediate or Advanced."
-          style={{ minHeight: 120 }}
+          placeholder="Registration for our AI workshop — name, college email, phone, year of study, and which track they want: Beginner, Intermediate or Advanced."
         />
 
-        <div className="row" style={{ marginTop: 12 }}>
-          <button
-            className="btn primary"
-            onClick={generate}
-            disabled={busy || instructions.trim().length < 3}
-          >
-            {busy ? <><span className="spin" /> Working…</> : "Build the form"}
-          </button>
-
+        <div className="compose-bar">
           {voiceSupported && (
             <button
               className={`btn mic${listening ? " on" : ""}`}
               onClick={toggleMic}
-              disabled={busy}
+              disabled={busy || transcribing}
               aria-pressed={listening}
             >
-              {listening ? "◼ Stop recording" : "🎤 Speak instead"}
+              {transcribing ? <><span className="spin" /> Writing it down…</>
+                : listening ? "◼ Stop" : "🎤 Speak"}
             </button>
           )}
 
@@ -251,19 +317,17 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
               Clear
             </button>
           )}
+          <span style={{ flex: 1 }} />
+          <button
+            className="btn primary"
+            onClick={generate}
+            disabled={busy || instructions.trim().length < 3}
+          >
+            {busy ? <><span className="spin" /> Working…</> : "Build the form →"}
+          </button>
         </div>
 
-        {listening && (
-          <p className="hint" style={{ marginTop: 10 }}>
-            Listening… speak naturally, then press stop.
-          </p>
-        )}
 
-        {!voiceSupported && (
-          <p className="hint" style={{ marginTop: 10 }}>
-            Voice input needs Chrome, Edge or Safari. Typing works everywhere.
-          </p>
-        )}
 
         {!form && (
           <div className="examples">
@@ -276,6 +340,19 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
         )}
       </div>
 
+      {listening && (
+        <p className="hint" style={{ marginTop: 12 }}>
+          {voiceApi
+            ? "Recording — say it however you like, then press Stop."
+            : "Listening… speak naturally, then press Stop."}
+        </p>
+      )}
+      {!voiceSupported && (
+        <p className="hint" style={{ marginTop: 12 }}>
+          Voice needs a browser with microphone support. Typing works everywhere.
+        </p>
+      )}
+
       {error && <div className="note bad" style={{ marginTop: 18 }}>{error}</div>}
 
       {form && (
@@ -283,8 +360,8 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
           <div className="card">
             <div className="spread" style={{ marginBottom: 16 }}>
               <h2>Check it over</h2>
-              <span className={`tag${engine === "claude" ? " accent" : ""}`}>
-                {engine === "claude" ? "Written by Claude" : "Built by the basic parser"}
+              <span className={`tag${engine === "groq" || engine === "claude" ? " accent" : ""}`}>
+                {engine === "groq" || engine === "claude" ? "Written by AI" : "Built by the basic parser"}
               </span>
             </div>
 

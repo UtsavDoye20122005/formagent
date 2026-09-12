@@ -81,7 +81,7 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="card auth-card">
+    <div className="card">
       <h1 style={{ fontSize: 23, marginBottom: 6 }}>
         {signingUp ? "Create your account" : "Sign in to FormAgent"}
       </h1>
@@ -128,7 +128,7 @@ export default function LoginForm() {
           {signingUp && <p className="hint">At least 6 characters.</p>}
         </div>
 
-        <button className="btn primary" type="submit" disabled={busy} style={{ width: "100%" }}>
+        <button className="btn primary block big" type="submit" disabled={busy}>
           {busy ? <><span className="spin" /> Just a moment…</> : signingUp ? "Create account" : "Sign in"}
         </button>
       </form>
