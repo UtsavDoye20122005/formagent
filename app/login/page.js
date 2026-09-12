@@ -6,7 +6,7 @@ import SetupNotice from "../SetupNotice.js";
 import LoginForm from "./LoginForm.js";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Sign in — FormAgent" };
+export const metadata = { title: "Sign in — JiffyThat" };
 
 const POINTS = [
   ["1", "Say what you need to collect — out loud or typed."],
@@ -30,8 +30,8 @@ export default async function LoginPage() {
     <main className="auth-wrap">
       <aside className="auth-art">
         <div className="brand">
-          <span className="mark">F</span>
-          <span>FormAgent</span>
+          <span className="mark">J</span>
+          <span>JiffyThat</span>
         </div>
 
         <div className="auth-pitch">

@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — FormAgent",
-  description: "How FormAgent handles your data.",
+  title: "Privacy Policy — JiffyThat",
+  description: "How JiffyThat handles your data.",
 };
 
 const UPDATED = "13 September 2026";
@@ -12,21 +12,21 @@ export default function Privacy() {
   return (
     <main className="shell narrow legal">
       <p className="legal-back">
-        <Link href="/">← Back to FormAgent</Link>
+        <Link href="/">← Back to JiffyThat</Link>
       </p>
 
       <h1>Privacy Policy</h1>
       <p className="lede">Last updated {UPDATED}</p>
 
       <p>
-        FormAgent lets you describe a form in your own words and turns it into a
+        JiffyThat lets you describe a form in your own words and turns it into a
         shareable web form. This page explains, in plain language, what we store
         and why.
       </p>
 
       <h2>Who runs this service</h2>
       <p>
-        FormAgent is operated by an individual developer. For any question about
+        JiffyThat is operated by an individual developer. For any question about
         your data, write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
       </p>
 
@@ -82,7 +82,7 @@ export default function Privacy() {
           <strong>Vercel</strong> — hosts the website.
         </li>
         <li>
-          <strong>Groq</strong> — when you ask FormAgent to build a form, the
+          <strong>Groq</strong> — when you ask JiffyThat to build a form, the
           instructions you wrote (or the audio you recorded, if you used the
           microphone) are sent to Groq so the form can be generated, and the
           result is sent back. Nothing else about your account is sent.
@@ -95,11 +95,11 @@ export default function Privacy() {
 
       <h2>Google user data</h2>
       <p>
-        Signing in with Google gives FormAgent only your basic profile
+        Signing in with Google gives JiffyThat only your basic profile
         information: email address, name and profile picture. We use it solely to
         create your account, show who is signed in, and keep your forms attached
         to you. We do not read your Gmail, Drive, Contacts or Calendar, and we do
-        not request access to them. FormAgent&apos;s use of information received
+        not request access to them. JiffyThat&apos;s use of information received
         from Google APIs follows the{" "}
         <a
           href="https://developers.google.com/terms/api-services-user-data-policy"
@@ -134,12 +134,12 @@ export default function Privacy() {
         If you publish a form, you are responsible for what you ask people and
         for how you use their answers. Do not collect passwords, payment card
         numbers, government ID numbers or similar sensitive details through
-        FormAgent.
+        JiffyThat.
       </p>
 
       <h2>Children</h2>
       <p>
-        FormAgent is not intended for people under 13, and accounts should not be
+        JiffyThat is not intended for people under 13, and accounts should not be
         created by them.
       </p>
 

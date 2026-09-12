@@ -4,8 +4,8 @@ export default function Header({ children, user }) {
   return (
     <header className="nav">
       <Link href="/" className="brand">
-        <span className="mark">F</span>
-        <span>FormAgent</span>
+        <span className="mark">J</span>
+        <span>JiffyThat</span>
       </Link>
       <div className="row" style={{ flexWrap: "nowrap" }}>
         {children}

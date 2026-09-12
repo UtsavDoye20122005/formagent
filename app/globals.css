@@ -1,5 +1,5 @@
 /* ===========================================================================
-   FormAgent — design system
+   JiffyThat — design system
    ---------------------------------------------------------------------------
    Two surfaces. The landing page is dark and cinematic because it has one job:
    make someone want to try this. Everything behind the login is light, because
@@ -56,6 +56,22 @@
   --mid:  200ms;
   --slow: 420ms;
 
+  /* Type. One scale, used everywhere, so nothing is sized by guesswork.
+     Each step is roughly 1.2x the one below it at the small end and opens up
+     faster at the display end, where the jumps need to be obvious. */
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Space Grotesk", var(--font-ui);
+
+  --t-micro: 12px;    /* legal lines, table headers */
+  --t-small: 13.5px;  /* labels, chips, secondary buttons */
+  --t-body:  15.5px;  /* the default reading size */
+  --t-lede:  17px;    /* the sentence under a heading */
+  --t-h3:    16.5px;
+  --t-h2:    21px;
+  --t-h1:    clamp(28px, 3.2vw, 36px);
+  --t-display: clamp(40px, 6.2vw, 74px);
+
   --gradient: linear-gradient(135deg, #6C5CF7 0%, #4A3BD6 100%);
   --gradient-soft: linear-gradient(135deg, #8B7BFF 0%, #5B4BF0 100%);
 }
@@ -68,12 +84,17 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--ink);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
+  font-family: var(--font-ui);
+  font-size: var(--t-body);
+  line-height: 1.6;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Inter's default digits are proportional, which makes counts jitter as they
+     change. Tabular everywhere is worse for prose, so it is opt-in per element
+     and only the contextual alternates are on globally. */
+  font-feature-settings: "cv05" 1, "cv11" 1;
 }
 
 ::selection { background: var(--accent-soft); color: var(--accent-deep); }
@@ -101,26 +122,35 @@ a { color: inherit; }
 
 /* --- type ------------------------------------------------------------------ */
 
+/* Bigger text gets tighter tracking. This is the single adjustment that most
+   separates typography that was set from typography that was typed. */
 h1 {
-  font-size: clamp(28px, 3.4vw, 36px);
-  line-height: 1.16;
-  letter-spacing: -0.032em;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--t-h1);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 600;
   margin: 0 0 10px;
 }
 h2 {
-  font-size: 21px;
-  line-height: 1.25;
+  font-size: var(--t-h2);
+  line-height: 1.26;
   letter-spacing: -0.022em;
-  font-weight: 660;
+  font-weight: 650;
   margin: 0 0 10px;
 }
-h3 { font-size: 16px; font-weight: 640; letter-spacing: -0.012em; margin: 0 0 6px; }
+h3 {
+  font-size: var(--t-h3);
+  line-height: 1.35;
+  font-weight: 620;
+  letter-spacing: -0.014em;
+  margin: 0 0 6px;
+}
 
-.lede  { color: var(--ink-2); font-size: 16px; line-height: 1.6; margin: 0 0 22px; max-width: 62ch; }
-.hint  { color: var(--ink-3); font-size: 12.8px; line-height: 1.5; margin: 7px 0 0; }
-.meta  { color: var(--ink-3); font-size: 12.5px; margin: 7px 0 0; }
-.label { display: block; font-weight: 620; font-size: 13.5px; margin-bottom: 8px; letter-spacing: -0.008em; }
+.lede  { color: var(--ink-2); font-size: var(--t-lede); line-height: 1.62; margin: 0 0 22px; max-width: 62ch; }
+.hint  { color: var(--ink-3); font-size: 13px; line-height: 1.5; margin: 7px 0 0; }
+.meta  { color: var(--ink-3); font-size: var(--t-micro); margin: 7px 0 0; }
+.label { display: block; font-weight: 600; font-size: var(--t-small); margin-bottom: 8px; letter-spacing: -0.006em; }
 .req   { color: var(--bad); margin-left: 3px; }
 
 .eyebrow {
@@ -175,9 +205,10 @@ h3 { font-size: 16px; font-weight: 640; letter-spacing: -0.012em; margin: 0 0 6p
   background: var(--btn-bg);
   color: var(--btn-fg);
   font: inherit;
-  font-size: 14px;
-  font-weight: 560;
+  font-size: 14.5px;
+  font-weight: 550;
   line-height: 1;
+  letter-spacing: -0.006em;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -308,7 +339,8 @@ input[type="datetime-local"], input[type="search"], textarea, select {
   background: var(--sunken);
   color: var(--ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--t-body);
+  line-height: 1.5;
   transition:
     background var(--fast) var(--ease),
     border-color var(--fast) var(--ease),
@@ -601,9 +633,10 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 .hero h1 {
-  font-size: clamp(42px, 6.4vw, 76px);
-  line-height: 1.03;
-  letter-spacing: -0.042em;
+  font-family: var(--font-display);
+  font-size: var(--t-display);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
   font-weight: 700;
   margin: 0 0 20px;
   color: var(--l-ink);
@@ -615,7 +648,7 @@ tbody tr:last-child td { border-bottom: 0; }
   color: transparent;
 }
 .hero-lede {
-  font-size: clamp(16px, 1.8vw, 19px);
+  font-size: clamp(16px, 1.75vw, 19px);
   line-height: 1.62;
   color: var(--l-ink-2);
   max-width: 640px;
@@ -767,14 +800,23 @@ tbody tr:last-child td { border-bottom: 0; }
    Brand mark, top bar, auth
    =========================================================================== */
 
-.brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 660; letter-spacing: -0.018em; font-size: 15.5px; text-decoration: none; color: inherit; }
+.brand {
+  display: inline-flex; align-items: center; gap: 11px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 16px;
+  text-decoration: none;
+  color: inherit;
+}
 .brand .mark {
   width: 30px; height: 30px;
   border-radius: 9px;
   background: var(--gradient-soft);
   color: #fff;
   display: grid; place-items: center;
-  font-weight: 700; font-size: 15px;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 16px;
   box-shadow: 0 4px 14px -2px rgba(91, 75, 240, 0.5);
   flex: none;
 }
@@ -864,10 +906,11 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .auth-pitch { max-width: 34ch; }
 .auth-pitch h2 {
+  font-family: var(--font-display);
   font-size: clamp(28px, 3.2vw, 38px);
-  line-height: 1.12;
-  letter-spacing: -0.038em;
-  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 600;
   margin-bottom: 16px;
   color: var(--l-ink);
 }
@@ -970,7 +1013,8 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 .compose textarea {
   border: 0; background: transparent; box-shadow: none;
-  font-size: 18px; line-height: 1.62; padding: 18px 18px 6px;
+  font-size: 18.5px; line-height: 1.62; letter-spacing: -0.012em;
+  padding: 18px 18px 6px;
   min-height: 118px;
 }
 .compose textarea:focus { box-shadow: none; background: transparent; }
@@ -1119,8 +1163,13 @@ tbody tr:last-child td { border-bottom: 0; }
 .form-band::before { width: 260px; height: 260px; top: -130px; right: -40px; }
 .form-band::after  { width: 180px; height: 180px; top: -70px;  right: 10px; border-color: rgba(91, 75, 240, 0.13); }
 
-.form-band h1 { font-size: clamp(26px, 4vw, 36px); margin-bottom: 10px; }
-.form-band .lede { margin-bottom: 18px; font-size: 16px; }
+.form-band h1 {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4vw, 38px);
+  letter-spacing: -0.028em;
+  margin-bottom: 10px;
+}
+.form-band .lede { margin-bottom: 18px; font-size: var(--t-lede); }
 
 .form-logo { display: block; max-height: 44px; width: auto; margin: 0 0 20px; border-radius: 8px; }
 
@@ -1219,7 +1268,12 @@ tbody tr:last-child td { border-bottom: 0; }
 
 /* bento */
 .bento { display: grid; grid-template-columns: 1fr 250px 200px; gap: 16px; align-items: start; margin-bottom: 22px; }
-.stat-big { font-size: 50px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.04; font-variant-numeric: tabular-nums; }
+.stat-big {
+  font-family: var(--font-display);
+  font-size: 52px; font-weight: 700;
+  letter-spacing: -0.035em; line-height: 1.02;
+  font-variant-numeric: tabular-nums;
+}
 .spark { display: flex; align-items: flex-end; gap: 7px; height: 108px; margin-top: 18px; }
 .spark div { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .spark i {
@@ -1349,3 +1403,30 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .tag.tiny { padding: 3px 8px; font-size: 11px; flex: none; }
 .product-q { gap: 10px; }
+
+/* ---------------------------------------------------------------------------
+   Typographic housekeeping
+   The details that separate set type from typed type.
+   --------------------------------------------------------------------------- */
+
+/* Anything that counts, measures or shows a time should not shift width as it
+   changes. Proportional digits make a live counter visibly twitch. */
+.stat-value, .bar-value, .count, .steps-label, .clip small,
+td, th, .linkbox code { font-variant-numeric: tabular-nums; }
+
+/* Prose is easier to read short. Headings are easier to read tight. */
+p { text-wrap: pretty; }
+h1, h2, h3, .hero h1, .auth-pitch h2 { text-wrap: balance; }
+
+/* Uppercase micro-labels need air between the letters or they read as a blob. */
+.eyebrow, th, .side-heading, .product-said h4 { font-feature-settings: "cv05" 1; }
+
+/* Long words in a narrow column — a question label in a 7rem gutter, a URL in
+   a link box — should break rather than punch a hole in the layout. */
+.bar-label, .summary-q, .product-q b, .list-item, td.wrap { overflow-wrap: anywhere; }
+
+/* The display face is heavier than Inter at the same nominal weight, so the
+   two need slightly different values to look like the same emphasis. */
+.brand, h1, .hero h1, .form-band h1, .auth-pitch h2, .stat-big {
+  font-synthesis-weight: none;
+}

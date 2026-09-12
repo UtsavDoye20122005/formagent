@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — FormAgent",
-  description: "The rules for using FormAgent.",
+  title: "Terms of Service — JiffyThat",
+  description: "The rules for using JiffyThat.",
 };
 
 const UPDATED = "12 September 2026";
@@ -12,20 +12,20 @@ export default function Terms() {
   return (
     <main className="shell narrow legal">
       <p className="legal-back">
-        <Link href="/">← Back to FormAgent</Link>
+        <Link href="/">← Back to JiffyThat</Link>
       </p>
 
       <h1>Terms of Service</h1>
       <p className="lede">Last updated {UPDATED}</p>
 
       <p>
-        By creating an account on FormAgent you agree to what follows. If you do
+        By creating an account on JiffyThat you agree to what follows. If you do
         not agree, please do not use the service.
       </p>
 
-      <h2>What FormAgent does</h2>
+      <h2>What JiffyThat does</h2>
       <p>
-        You describe a form in words or by voice, FormAgent builds it, and you
+        You describe a form in words or by voice, JiffyThat builds it, and you
         get a link you can send to other people. Their answers come back to your
         dashboard.
       </p>
@@ -47,7 +47,7 @@ export default function Terms() {
           that pretends to be an official one.
         </li>
         <li>Send unsolicited bulk messages pointing at your forms.</li>
-        <li>Break the law, or use FormAgent to harm or deceive anyone.</li>
+        <li>Break the law, or use JiffyThat to harm or deceive anyone.</li>
         <li>
           Attack, overload or attempt to break into the service or the accounts
           of others.
@@ -63,7 +63,7 @@ export default function Terms() {
 
       <h2>Availability</h2>
       <p>
-        FormAgent is provided as it is, with no guarantee of uptime, accuracy of
+        JiffyThat is provided as it is, with no guarantee of uptime, accuracy of
         generated forms, or that data will never be lost. Keep your own copy of
         anything important — you can export responses at any time. To the extent
         the law allows, we are not liable for losses arising from your use of the
@@ -72,7 +72,7 @@ export default function Terms() {
 
       <h2>Ending things</h2>
       <p>
-        You can stop using FormAgent whenever you like and ask us to delete your
+        You can stop using JiffyThat whenever you like and ask us to delete your
         account by writing to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. We may
         suspend an account that breaks these terms.
       </p>
@@ -80,7 +80,7 @@ export default function Terms() {
       <h2>Changes</h2>
       <p>
         These terms may change; the date at the top will change with them.
-        Continuing to use FormAgent after a change means you accept it.
+        Continuing to use JiffyThat after a change means you accept it.
       </p>
 
       <h2>Contact</h2>

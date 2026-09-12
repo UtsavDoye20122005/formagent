@@ -1,4 +1,4 @@
-# FormAgent
+# JiffyThat
 
 Describe a form in plain words — by voice or text — and get a link anyone can open
 and fill in. Answers land in your own private dashboard, exportable to CSV or

@@ -312,7 +312,7 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
     <>
       <h1>Describe a form. Share the link.</h1>
       <p className="lede">
-        Speak or type what you need to collect. FormAgent writes the questions, gives you a
+        Speak or type what you need to collect. JiffyThat writes the questions, gives you a
         link anyone can open, and keeps every answer in one place.
       </p>
 

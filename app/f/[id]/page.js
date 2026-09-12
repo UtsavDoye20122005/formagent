@@ -58,7 +58,7 @@ export default async function FormPage({ params }) {
   return (
     <main className="shell narrow" style={accentStyle(form.accent)}>
       <PublicForm form={form} />
-      <p className="footer">Made with FormAgent</p>
+      <p className="footer">Made with JiffyThat</p>
     </main>
   );
 }

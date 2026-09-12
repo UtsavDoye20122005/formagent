@@ -84,7 +84,7 @@ export default function LoginForm() {
   return (
     <div className="card">
       <h1 style={{ fontSize: 23, marginBottom: 6 }}>
-        {signingUp ? "Create your account" : "Sign in to FormAgent"}
+        {signingUp ? "Create your account" : "Sign in to JiffyThat"}
       </h1>
       <p className="lede" style={{ marginBottom: 22 }}>
         {signingUp

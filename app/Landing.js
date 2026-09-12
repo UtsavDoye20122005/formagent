@@ -31,8 +31,8 @@ export default function Landing() {
       <div className="landing-inner">
         <nav className="landing-nav">
           <span className="brand">
-            <span className="mark">F</span>
-            <span>FormAgent</span>
+            <span className="mark">J</span>
+            <span>JiffyThat</span>
           </span>
           <div className="landing-links">
             <a href="#how">How it works</a>
@@ -53,7 +53,7 @@ export default function Landing() {
           </h1>
 
           <p className="hero-lede">
-            Describe what you need to collect. FormAgent writes the questions, you check
+            Describe what you need to collect. JiffyThat writes the questions, you check
             them, and everyone gets one link. No dragging fields around.
           </p>
 

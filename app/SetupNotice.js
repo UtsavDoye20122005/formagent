@@ -2,8 +2,8 @@ export default function SetupNotice() {
   return (
     <div className="card" style={{ marginTop: 48 }}>
       <div className="brand" style={{ marginBottom: 18 }}>
-        <span className="mark">F</span>
-        <span>FormAgent</span>
+        <span className="mark">J</span>
+        <span>JiffyThat</span>
       </div>
       <h1 style={{ fontSize: 22 }}>Almost ready</h1>
       <p className="lede">

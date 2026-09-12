@@ -1,4 +1,4 @@
-# Setting up FormAgent
+# Setting up JiffyThat
 
 Follow these in order. Total time is about 20 minutes. Nothing here costs money.
 
@@ -12,7 +12,7 @@ Where you'll be working:
 
 ## Step 0 — Put this code online (2 min)
 
-There is an older `formagent-app` project already on your Vercel account. **It has
+There is an older `jiffythat-app` project already on your Vercel account. **It has
 the old code on it — no login, no sections.** Ignore it, or delete it, and deploy
 this folder fresh.
 
@@ -43,7 +43,7 @@ database isn't connected yet. Steps 1 to 3 fix that.
 
 1. Go to https://supabase.com and sign up (use Continue with GitHub, it's quickest).
 2. Click **New project**.
-3. Name it `formagent`. Pick a database password and **save it somewhere** — you
+3. Name it `jiffythat`. Pick a database password and **save it somewhere** — you
    won't need it for this app, but losing it is annoying later.
 4. Region: pick **Southeast Asia (Singapore)** or **South Asia (Mumbai)** — closest to you,
    so the app feels faster.
@@ -92,7 +92,7 @@ sign-in is the next step.
 Otherwise logging in will bounce you to the wrong address.
 
 1. Supabase → **Authentication** → **URL Configuration**.
-2. **Site URL**: your app's address, e.g. `https://formagent-app.vercel.app`
+2. **Site URL**: your app's address, e.g. `https://jiffythat-app.vercel.app`
 3. **Redirect URLs**: click Add URL and add:
    ```
    https://your-app-address.vercel.app/auth/callback
@@ -126,11 +126,11 @@ Copy it. You'll paste it into Google in a moment.
 **Now in Google Cloud:**
 
 1. Go to https://console.cloud.google.com and sign in.
-2. Top left, click the project dropdown → **New Project** → name it `formagent` → Create.
+2. Top left, click the project dropdown → **New Project** → name it `jiffythat` → Create.
    Make sure you're *inside* that project before continuing.
 3. Search for **"OAuth consent screen"** and open it.
    - User Type: **External** → Create
-   - App name: `FormAgent`
+   - App name: `JiffyThat`
    - User support email: your email
    - Developer contact email: your email
    - Save and continue through the remaining screens. You can skip Scopes.
@@ -139,7 +139,7 @@ Copy it. You'll paste it into Google in a moment.
      your teacher tries it and gets blocked.
 4. Search for **"Credentials"** → **Create Credentials** → **OAuth client ID**.
    - Application type: **Web application**
-   - Name: `FormAgent web`
+   - Name: `JiffyThat web`
    - Under **Authorized redirect URIs** click **Add URI** and paste the Supabase
      callback URL you copied above. This must match exactly.
    - Create.

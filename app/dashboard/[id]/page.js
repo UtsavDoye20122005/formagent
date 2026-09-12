@@ -6,7 +6,7 @@ import { currentUser } from "../../../lib/supabase/server.js";
 import { isConfigured } from "../../../lib/supabase/config.js";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Responses — FormAgent" };
+export const metadata = { title: "Responses — JiffyThat" };
 
 export default async function ResponsesPage({ params }) {
   if (!isConfigured()) redirect("/");

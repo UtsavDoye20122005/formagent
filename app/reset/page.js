@@ -3,7 +3,7 @@ import SetupNotice from "../SetupNotice.js";
 import { isConfigured } from "../../lib/supabase/config.js";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Set a new password — FormAgent" };
+export const metadata = { title: "Set a new password — JiffyThat" };
 
 export default function ResetPage() {
   if (!isConfigured()) {

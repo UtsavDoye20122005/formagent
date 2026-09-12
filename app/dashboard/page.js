@@ -8,7 +8,7 @@ import { isConfigured } from "../../lib/supabase/config.js";
 import { listWorkspaces, listForms } from "../../lib/db.js";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "My forms — FormAgent" };
+export const metadata = { title: "My forms — JiffyThat" };
 
 export default async function DashboardPage() {
   if (!isConfigured()) {
