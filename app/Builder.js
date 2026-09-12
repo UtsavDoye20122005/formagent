@@ -3,12 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import FormFields from "./FormFields.js";
 
-const EXAMPLES = [
-  "Sign-up form for our AIESEC winter volunteering programme — full name, college email, phone, college, year of study, which country they prefer from Turkey, Egypt, Vietnam, Poland, and why they want to go.",
-  "Feedback form after a workshop: name (optional), rating out of 5, what was most useful, what we should improve, and would they attend again.",
-  "Guest registration for a campus tech talk — name, email, branch, whether they need a parking pass, and t-shirt size.",
-];
-
 const WAVE = [0, 130, 260, 90, 200, 40, 310, 160, 70, 240, 110, 20];
 
 const TYPES = [
@@ -368,15 +362,6 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
 
 
 
-        {!form && (
-          <div className="examples">
-            {EXAMPLES.map((ex, i) => (
-              <button className="example" key={i} onClick={() => setInstructions(ex)}>
-                {ex.split("—")[0].trim()}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {listening && (
