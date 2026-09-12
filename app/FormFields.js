@@ -134,15 +134,24 @@ export default function FormFields({
             )}
 
             {f.type === "boolean" && (
-              <label className="choice" style={{ maxWidth: 320 }}>
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={value === true}
-                  onChange={(e) => onChange(f.id, e.target.checked)}
-                />
-                <span>Yes</span>
-              </label>
+              // Two options, neither picked to begin with. A single ticked-or-not
+              // box quietly answers "no" for everyone who never looked at it.
+              <div className="choices" role="radiogroup" aria-labelledby={f.id}>
+                {[["yes", "Yes", true], ["no", "No", false]].map(([key, text, val]) => (
+                  <label className="choice" key={key}>
+                    <input
+                      type="radio"
+                      name={f.id}
+                      value={key}
+                      disabled={disabled}
+                      checked={value === val}
+                      aria-invalid={err ? "true" : undefined}
+                      onChange={() => onChange(f.id, val)}
+                    />
+                    <span>{text}</span>
+                  </label>
+                ))}
+              </div>
             )}
 
             {f.type === "rating" && (

@@ -23,7 +23,6 @@ export default function PublicForm({ form }) {
     const init = {};
     for (const f of form.fields) {
       if (f.type === "checkbox") init[f.id] = [];
-      else if (f.type === "boolean") init[f.id] = false;
       else init[f.id] = "";
     }
     return init;

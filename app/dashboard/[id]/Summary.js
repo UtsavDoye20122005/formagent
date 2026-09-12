@@ -14,6 +14,13 @@ function isAnswered(value) {
   return value != null && String(value).trim() !== "";
 }
 
+function isYes(v) {
+  return v === true || v === "true" || v === "yes" || v === "Yes";
+}
+function isNo(v) {
+  return v === false || v === "false" || v === "no" || v === "No";
+}
+
 function pct(part, whole) {
   if (!whole) return 0;
   return Math.round((part / whole) * 100);
@@ -69,14 +76,15 @@ function QuestionCard({ field, responses }) {
     const rows = [...counts].map(([label, count]) => ({ label, count }));
     body = rows.length ? <Bars rows={rows} total={total} /> : null;
   } else if (field.type === "boolean") {
-    const yes = answered.filter((v) => v === true || v === "true" || v === "Yes").length;
+    const yes = answered.filter(isYes).length;
+    const no = answered.filter(isNo).length;
     body = (
       <Bars
         rows={[
           { label: "Yes", count: yes },
-          { label: "No", count: total - yes },
+          { label: "No", count: no },
         ]}
-        total={total}
+        total={yes + no}
         keepOrder
       />
     );
