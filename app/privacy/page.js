@@ -5,7 +5,7 @@ export const metadata = {
   description: "How FormAgent handles your data.",
 };
 
-const UPDATED = "12 September 2026";
+const UPDATED = "13 September 2026";
 const CONTACT = "utsavdoye07@gmail.com";
 
 export default function Privacy() {
@@ -47,6 +47,18 @@ export default function Privacy() {
           published. You choose the questions, so you decide what is collected.
           Responses are visible to the form&apos;s owner only.
         </li>
+        <li>
+          <strong>Files people attach.</strong> If a form asks for an upload, the
+          file is stored privately and can be opened only by that form&apos;s
+          owner, through a link that expires.
+        </li>
+        <li>
+          <strong>A fingerprint of the sender.</strong> When someone submits a
+          form we store a one-way hash of their IP address — never the address
+          itself, and it cannot be turned back into one. It exists for a single
+          purpose: to stop one person flooding a form with thousands of fake
+          answers. Nothing else reads it, and it is not shown to form owners.
+        </li>
       </ul>
       <p>
         We do not use tracking or advertising cookies. The only cookie set is the
@@ -56,8 +68,9 @@ export default function Privacy() {
       <h2>Where it is stored</h2>
       <p>
         All accounts, forms and responses are stored in a Supabase-hosted
-        PostgreSQL database. Each account can only read its own forms and
-        responses; this is enforced by the database itself, not only by the app.
+        PostgreSQL database, and uploaded files in Supabase storage. Each account
+        can only read its own forms, responses and files; this is enforced by the
+        database itself, not only by the app.
       </p>
 
       <h2>Who else sees it</h2>
@@ -107,6 +120,7 @@ export default function Privacy() {
       <h2>Your choices</h2>
       <ul>
         <li>Delete any form, and its responses go with it.</li>
+        <li>Ask us to delete a particular uploaded file at the address below.</li>
         <li>
           Ask us to delete your account and everything in it by writing to{" "}
           <a href={`mailto:${CONTACT}`}>{CONTACT}</a>. We will do it within 30

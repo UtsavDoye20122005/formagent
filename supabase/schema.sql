@@ -148,21 +148,27 @@ grant select on public.forms to anon;
 grant insert on public.responses to anon;
 
 -- ---------------------------------------------------------------------------
--- Closing rules, branding and the live response count
+-- Closing rules, branding, the live response count, and spam protection
 --
 -- Added after the first version, so these are all "add if missing" statements.
 -- Running this file again on an existing project changes nothing else.
 -- ---------------------------------------------------------------------------
 
 alter table public.forms add column if not exists closes_at      timestamptz;
-alter table public.forms add column if not exists max_responses  integer;
 alter table public.forms add column if not exists response_count integer not null default 0;
 alter table public.forms add column if not exists accent         text;
 alter table public.forms add column if not exists logo_url       text;
 
+-- The "stop after N answers" limit was dropped again: a deadline is the only
+-- closing rule now.
 alter table public.forms drop constraint if exists forms_max_responses_sane;
-alter table public.forms add  constraint forms_max_responses_sane
-  check (max_responses is null or max_responses between 1 and 100000);
+alter table public.forms drop column if exists max_responses;
+
+-- A one-way fingerprint of the sender, never their actual address. Used only
+-- to stop one person flooding a form, and nothing else reads it.
+alter table public.responses add column if not exists ip_hash text;
+
+create index if not exists responses_ip_idx on public.responses (ip_hash, submitted_at desc);
 
 -- Backfill the counter for forms that already have answers.
 update public.forms f
@@ -171,9 +177,7 @@ update public.forms f
  where c.form_id = f.id
    and f.response_count is distinct from c.n;
 
--- Keep the counter true. The public form page reads it to decide whether a
--- form has hit its limit, and an anonymous visitor is not allowed to count
--- rows in responses themselves.
+-- Keep the counter true.
 create or replace function public.bump_response_count()
 returns trigger
 language plpgsql
@@ -202,7 +206,11 @@ create trigger responses_count_del
   for each row execute function public.bump_response_count();
 
 -- The real gate. Enforced by the database, so no amount of poking at the API
--- from outside can push a response into a form that is shut.
+-- from outside can push a response into a form that is shut, or flood one.
+--
+-- The limits are deliberately generous. A whole computer lab sharing one
+-- college connection will show up as a single fingerprint, so the per-form
+-- ceiling has to survive that; it is set to stop a script, not a classroom.
 create or replace function public.check_form_accepting()
 returns trigger
 language plpgsql
@@ -210,7 +218,8 @@ security definer
 set search_path = public
 as $$
 declare
-  f public.forms%rowtype;
+  f      public.forms%rowtype;
+  recent integer;
 begin
   select * into f from public.forms where id = new.form_id;
 
@@ -223,8 +232,36 @@ begin
   if f.closes_at is not null and now() >= f.closes_at then
     raise exception 'form_past_deadline';
   end if;
-  if f.max_responses is not null and f.response_count >= f.max_responses then
-    raise exception 'form_full';
+
+  if new.ip_hash is not null then
+    -- Same sender, same form, last hour.
+    select count(*) into recent
+      from public.responses
+     where form_id = new.form_id
+       and ip_hash = new.ip_hash
+       and submitted_at > now() - interval '1 hour';
+    if recent >= 40 then
+      raise exception 'too_many_from_you';
+    end if;
+
+    -- Same sender, every form, last hour. Catches someone walking a script
+    -- across several links at once.
+    select count(*) into recent
+      from public.responses
+     where ip_hash = new.ip_hash
+       and submitted_at > now() - interval '1 hour';
+    if recent >= 120 then
+      raise exception 'too_many_from_you';
+    end if;
+  end if;
+
+  -- Whole-form burst, whoever is sending it.
+  select count(*) into recent
+    from public.responses
+   where form_id = new.form_id
+     and submitted_at > now() - interval '1 minute';
+  if recent >= 40 then
+    raise exception 'too_fast';
   end if;
 
   return new;
@@ -235,3 +272,109 @@ drop trigger if exists responses_gate on public.responses;
 create trigger responses_gate
   before insert on public.responses
   for each row execute function public.check_form_accepting();
+
+grant insert (form_id, answers, ip_hash) on public.responses to anon;
+
+-- ---------------------------------------------------------------------------
+-- File storage
+--
+-- Two buckets:
+--   form-files  private. Whatever people attach when filling in a form. An
+--               anonymous visitor may drop a file into an open form's folder
+--               and nothing else. Only the form's owner can read them back.
+--   form-logos  public. The small image an owner puts at the top of their own
+--               form, so it has to be readable by anyone opening the link.
+-- ---------------------------------------------------------------------------
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('form-files', 'form-files', false, 10485760)
+on conflict (id) do update set public = false, file_size_limit = 10485760;
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('form-logos', 'form-logos', true, 2097152)
+on conflict (id) do update set public = true, file_size_limit = 2097152;
+
+-- --- form-files -------------------------------------------------------------
+
+drop policy if exists "attach a file to an open form" on storage.objects;
+create policy "attach a file to an open form"
+  on storage.objects
+  for insert
+  to anon, authenticated
+  with check (
+    bucket_id = 'form-files'
+    and exists (
+      select 1 from public.forms f
+      where f.id = (storage.foldername(name))[1]
+        and f.is_open
+        and (f.closes_at is null or now() < f.closes_at)
+    )
+  );
+
+drop policy if exists "only the form owner reads its files" on storage.objects;
+create policy "only the form owner reads its files"
+  on storage.objects
+  for select
+  to authenticated
+  using (
+    bucket_id = 'form-files'
+    and exists (
+      select 1 from public.forms f
+      where f.id = (storage.foldername(name))[1]
+        and f.user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "only the form owner deletes its files" on storage.objects;
+create policy "only the form owner deletes its files"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'form-files'
+    and exists (
+      select 1 from public.forms f
+      where f.id = (storage.foldername(name))[1]
+        and f.user_id = auth.uid()
+    )
+  );
+
+-- --- form-logos -------------------------------------------------------------
+-- Each person owns the folder named after their own user id.
+
+drop policy if exists "anyone may see a form logo" on storage.objects;
+create policy "anyone may see a form logo"
+  on storage.objects
+  for select
+  to anon, authenticated
+  using (bucket_id = 'form-logos');
+
+drop policy if exists "own your logo folder" on storage.objects;
+create policy "own your logo folder"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'form-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "replace your own logo" on storage.objects;
+create policy "replace your own logo"
+  on storage.objects
+  for update
+  to authenticated
+  using (
+    bucket_id = 'form-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "remove your own logo" on storage.objects;
+create policy "remove your own logo"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'form-logos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );

@@ -590,3 +590,121 @@ td.wrap { white-space: normal; min-width: 230px; }
 @media (max-width: 640px) {
   .settings-grid { grid-template-columns: 1fr; }
 }
+
+/* --- multi-page forms ------------------------------------------------------ */
+
+.steps { margin: 0 0 22px; }
+.steps-bar {
+  height: 5px; border-radius: 999px; background: var(--panel-3); overflow: hidden;
+}
+.steps-bar span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 260ms ease;
+}
+.steps-label { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-3); font-weight: 560; }
+
+/* The honeypot. Off-screen rather than display:none, because some scripts skip
+   anything that is hidden the obvious way. */
+.trap {
+  position: absolute; left: -9999px; top: auto;
+  width: 1px; height: 1px; overflow: hidden;
+}
+
+.tick {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--good-soft); color: var(--good);
+  display: grid; place-items: center; margin: 0 auto 14px; font-size: 24px;
+}
+
+.tag.pager { cursor: pointer; border-style: dashed; }
+.tag.pager.on {
+  border-style: solid;
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line);
+}
+
+/* --- answer summary (charts) ----------------------------------------------- */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: start;
+}
+.summary-card { padding: 20px; }
+.summary-q {
+  font-size: 14.5px; font-weight: 640; margin: 0 0 3px;
+  letter-spacing: -0.01em; line-height: 1.35;
+}
+
+.bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 8.5rem) 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.bar-label {
+  font-size: 13px; color: var(--ink-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bar-track {
+  height: 10px; border-radius: 999px; background: var(--panel-3);
+  overflow: hidden;
+}
+.bar-fill {
+  display: block; height: 100%; min-width: 3px;
+  border-radius: 999px; background: var(--accent);
+  transition: width 320ms ease;
+}
+.bar-value {
+  font-size: 13px; font-weight: 620; color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.bar-pct { margin-left: 6px; font-weight: 500; color: var(--ink-3); }
+
+.hero {
+  margin: 0 0 16px; font-size: 34px; font-weight: 680;
+  letter-spacing: -0.03em; line-height: 1;
+}
+.hero-unit {
+  display: block; margin-top: 5px;
+  font-size: 12.5px; font-weight: 520; color: var(--ink-3); letter-spacing: 0;
+}
+
+.stats { display: flex; flex-wrap: wrap; gap: 22px; }
+.stat { display: flex; flex-direction: column; gap: 3px; }
+.stat-value {
+  font-size: 21px; font-weight: 660; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-label { font-size: 12px; color: var(--ink-3); }
+
+.view-tabs { display: flex; gap: 4px; }
+.view-tabs .btn.on {
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line);
+}
+
+@media (max-width: 520px) {
+  .bars li { grid-template-columns: minmax(0, 6rem) 1fr auto; gap: 8px; }
+}
+
+.pager-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 14px; flex-wrap: wrap;
+}
+.pager-row .hint { margin: 0; }
+
+.filepick input[type="file"] {
+  padding: 10px; font-size: 13.5px; cursor: pointer;
+  background: var(--panel-2);
+}
+.filepick .hint { margin: 7px 0 0; }
+.good-text { color: var(--good); font-weight: 560; }
+
+.logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.logo-preview {
+  max-height: 44px; width: auto; border-radius: 8px;
+  background: #fff; padding: 4px; border: 1px solid var(--line);
+}

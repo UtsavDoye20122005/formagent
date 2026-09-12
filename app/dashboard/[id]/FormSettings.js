@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { uploadLogo } from "../../../lib/uploads.js";
+import { supabaseBrowser } from "../../../lib/supabase/browser.js";
 
 const SWATCHES = [
   ["", "Default"],
@@ -28,11 +30,10 @@ function toLocalInput(iso) {
 export default function FormSettings({ form, shareUrl, onSaved }) {
   const [open, setOpen] = useState(form.open);
   const [closesAt, setClosesAt] = useState(toLocalInput(form.closesAt));
-  const [maxResponses, setMaxResponses] = useState(
-    form.maxResponses == null ? "" : String(form.maxResponses)
-  );
   const [thankYou, setThankYou] = useState(form.thankYou || "");
   const [accent, setAccent] = useState(form.accent || "");
+  const [logoUrl, setLogoUrl] = useState(form.logoUrl || "");
+  const [logoBusy, setLogoBusy] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -71,6 +72,25 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
     a.remove();
   }
 
+  async function pickLogo(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLogoBusy(true);
+    setError("");
+    try {
+      const supabase = supabaseBrowser();
+      const { data } = await supabase.auth.getUser();
+      const userId = data?.user?.id;
+      if (!userId) throw new Error("Sign in again to upload a logo.");
+      setLogoUrl(await uploadLogo(userId, file));
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setLogoBusy(false);
+      event.target.value = "";
+    }
+  }
+
   async function save() {
     setBusy(true);
     setError("");
@@ -82,9 +102,9 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
         body: JSON.stringify({
           open,
           closesAt,
-          maxResponses,
           thankYou,
           accent,
+          logoUrl,
         }),
       });
       const data = await res.json();
@@ -99,15 +119,12 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
     }
   }
 
-  const limitHit =
-    form.maxResponses != null && (form.responseCount ?? 0) >= form.maxResponses;
-
   return (
     <div className="settings-grid">
       <div className="card">
         <h2 className="card-title">When it closes</h2>
         <p className="hint" style={{ marginTop: 0 }}>
-          Leave both empty and the form stays open until you close it yourself.
+          Leave this empty and the form stays open until you close it yourself.
         </p>
 
         {error && <div className="note bad">{error}</div>}
@@ -123,20 +140,6 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
           <p className="hint">
             Date and time, in your own time zone. After this moment nobody can submit.
           </p>
-        </div>
-
-        <div className="field">
-          <label className="label" htmlFor="maxResponses">Or stop after this many answers</label>
-          <input
-            id="maxResponses"
-            type="number"
-            min="1"
-            max="100000"
-            placeholder="No limit"
-            value={maxResponses}
-            onChange={(e) => setMaxResponses(e.target.value)}
-          />
-          {limitHit && <p className="hint">The limit has already been reached.</p>}
         </div>
 
         <label className="check">
@@ -162,6 +165,34 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
             value={thankYou}
             onChange={(e) => setThankYou(e.target.value)}
           />
+        </div>
+
+        <div className="field">
+          <label className="label" htmlFor="logo">Logo at the top of the form</label>
+          {logoUrl && (
+            <div className="logo-row">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="" className="logo-preview" />
+              <button
+                className="btn small ghost"
+                type="button"
+                onClick={() => setLogoUrl("")}
+                disabled={logoBusy}
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          <input
+            id="logo"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            disabled={logoBusy}
+            onChange={pickLogo}
+          />
+          <p className="hint">
+            {logoBusy ? "Uploading…" : "PNG, JPG, WEBP or SVG, up to 2 MB. Press Save after."}
+          </p>
         </div>
 
         <div className="field">

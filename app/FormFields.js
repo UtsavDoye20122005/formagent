@@ -10,7 +10,15 @@ const TEXTY = {
   time: "time",
 };
 
-export default function FormFields({ fields, values, errors = {}, onChange, disabled = false }) {
+export default function FormFields({
+  fields,
+  values,
+  errors = {},
+  onChange,
+  disabled = false,
+  onFile,
+  uploading = {},
+}) {
   return (
     <>
       {fields.map((f) => {
@@ -152,6 +160,26 @@ export default function FormFields({ fields, values, errors = {}, onChange, disa
                     {n}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {f.type === "file" && (
+              <div className="filepick">
+                <input
+                  id={f.id}
+                  type="file"
+                  disabled={disabled || uploading[f.id] === "busy"}
+                  aria-invalid={err ? "true" : undefined}
+                  aria-describedby={describedBy}
+                  onChange={(e) => onFile?.(f.id, e.target.files?.[0] || null)}
+                />
+                {uploading[f.id] === "busy" && (
+                  <p className="hint"><span className="spin" /> Uploading…</p>
+                )}
+                {uploading[f.id] === "done" && value && (
+                  <p className="hint good-text">✓ {String(value).split("/").pop()} attached</p>
+                )}
+                <p className="hint">Up to 10 MB.</p>
               </div>
             )}
 

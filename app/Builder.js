@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FormFields from "./FormFields.js";
 
 const EXAMPLES = [
@@ -23,7 +23,19 @@ const TYPES = [
   ["checkbox", "Pick many"],
   ["boolean", "Yes / no"],
   ["rating", "Rating"],
+  ["file", "File upload"],
 ];
+
+// Turns the "starts a new page" flags into real page numbers. The first field
+// can never start a page — it is already on page one.
+function renumber(fields) {
+  let page = 1;
+  return fields.map((f, i) => {
+    const breakBefore = i > 0 && Boolean(f.breakBefore);
+    if (breakBefore) page += 1;
+    return { ...f, breakBefore, page };
+  });
+}
 
 export default function Builder({ workspaces: initialWorkspaces = [], loadError = "", voiceApi = false }) {
   const [workspaces, setWorkspaces] = useState(initialWorkspaces);
@@ -262,13 +274,29 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
       const target = index + delta;
       if (target < 0 || target >= fields.length) return f;
       [fields[index], fields[target]] = [fields[target], fields[index]];
-      return { ...f, fields };
+      return { ...f, fields: renumber(fields) };
     });
   }
 
   function removeField(index) {
-    setForm((f) => ({ ...f, fields: f.fields.filter((_, i) => i !== index) }));
+    setForm((f) => ({ ...f, fields: renumber(f.fields.filter((_, i) => i !== index)) }));
   }
+
+  // A page break lives on the field it sits above. Toggling one re-derives
+  // every page number so they stay 1, 2, 3… with no gaps.
+  function togglePageBreak(index) {
+    setForm((f) => {
+      const fields = f.fields.map((field, i) =>
+        i === index ? { ...field, breakBefore: !field.breakBefore } : field
+      );
+      return { ...f, fields: renumber(fields) };
+    });
+  }
+
+  const pageCount = useMemo(
+    () => (form ? Math.max(1, ...form.fields.map((f) => f.page || 1)) : 1),
+    [form]
+  );
 
   async function copyLink() {
     try {
@@ -389,6 +417,7 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
 
             <h2 style={{ marginTop: 22, marginBottom: 10 }}>
               Questions <span className="tag">{form.fields.length}</span>
+              {pageCount > 1 && <span className="tag">{pageCount} pages</span>}
             </h2>
 
             {form.fields.map((f, i) => (
@@ -420,6 +449,16 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
                       />
                       Required
                     </label>
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        className={`tag pager${f.breakBefore ? " on" : ""}`}
+                        onClick={() => togglePageBreak(i)}
+                        title="Start a new page at this question"
+                      >
+                        {f.breakBefore ? "Starts page " + (f.page || 1) : "Break page here"}
+                      </button>
+                    )}
                   </div>
                   {f.options?.length > 0 && (
                     <p className="meta">Options: {f.options.join(" · ")}</p>

@@ -15,7 +15,6 @@ export async function generateMetadata({ params }) {
 const CLOSED_LINES = {
   closed: "This form is closed and isn't accepting any more responses.",
   deadline: "The deadline for this form has passed, so it isn't taking any more responses.",
-  full: "This form has had all the responses it was set to accept.",
 };
 
 // The owner can tint their form. One colour is enough — everything else in the
