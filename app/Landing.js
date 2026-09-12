@@ -8,13 +8,22 @@ const WAVE = [
   [30, 100], [42, 280], [20, 160], [10, 400], [24, 50], [34, 230], [18, 130], [12, 310],
 ];
 
+// Deliberately not another registration form. The upload is the thing a plain
+// form builder makes painful, and the last question is the one nobody asked
+// for — so only that one carries the badge. Claiming credit for the upload
+// would be a lie told in the shop window.
 const QUESTIONS = [
-  ["Full name", "Short text"],
-  ["Email", "Email"],
-  ["Which year are you in?", "Pick one · 1st · 2nd · 3rd · 4th"],
-  ["Do you need a laptop?", "Yes / no"],
-  ["Meal preference", "Pick one · Veg · Non-veg · Jain"],
+  ["Your name", "Short text", false],
+  ["What do you play?", "Pick one · Guitar · Drums · Keys · Bass · Vocals", false],
+  ["How long have you been playing?", "Number · years", false],
+  ["Upload a clip of you playing", "File · up to 10 MB", false],
+  ["Can you make Saturday rehearsals?", "Yes / no", false],
+  ["Anything we should know?", "Long text · optional", true],
 ];
+
+// The bars under the transcript. Static — it is a picture of a recording that
+// already happened, not one in progress.
+const CLIP = [6, 11, 19, 28, 14, 22, 9, 17, 26, 12, 20, 8, 15, 24, 10, 18, 7, 13, 21, 9, 16, 6];
 
 export default function Landing() {
   return (
@@ -59,7 +68,7 @@ export default function Landing() {
           </Link>
 
           <p className="hero-said">
-            “Collect their name, email, which year they&apos;re in, and whether they need a laptop”
+            “find out who&apos;s coming on the Goa trip and how much everyone has paid so far”
           </p>
 
           <div className="product" id="how">
@@ -67,23 +76,34 @@ export default function Landing() {
               <div className="product-said">
                 <h4>YOU SAID</h4>
                 <p>
-                  I&apos;m running a workshop next Saturday. I need their name, email, which
-                  year they&apos;re in, whether they need a laptop, and their meal preference.
+                  ok so we&apos;re holding auditions for the college band next month, I need
+                  their name, what they play, how long they&apos;ve been playing, a short clip
+                  of them actually playing something, and whether they can make Saturday
+                  rehearsals
                 </p>
-                <p className="turned">↓ 5 questions written</p>
+
+                <span className="clip" aria-hidden="true">
+                  {CLIP.map((h, i) => (
+                    <i key={i} style={{ height: `${h}px` }} />
+                  ))}
+                  <small>0:19</small>
+                </span>
+
+                <p className="turned">↓ 6 questions written</p>
               </div>
 
               <div className="product-form">
                 <div className="product-head">
-                  <strong>Workshop registration</strong>
-                  <span className="tag accent">just now</span>
+                  <strong>Band auditions</strong>
+                  <span className="tag accent">written in 2s</span>
                 </div>
-                {QUESTIONS.map(([label, type]) => (
+                {QUESTIONS.map(([label, type, inferred]) => (
                   <div className="product-q" key={label}>
                     <span>
                       <b>{label}</b>
                       <small>{type}</small>
                     </span>
+                    {inferred && <span className="tag accent tiny">added for you</span>}
                   </div>
                 ))}
               </div>
