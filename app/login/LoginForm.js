@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "../../lib/supabase/browser.js";
 
@@ -115,7 +116,12 @@ export default function LoginForm() {
         </div>
 
         <div className="field">
-          <label className="label" htmlFor="password">Password</label>
+          <div className="label-row">
+            <label className="label" htmlFor="password">Password</label>
+            {!signingUp && (
+              <Link className="linklike small" href="/forgot">Forgot?</Link>
+            )}
+          </div>
           <input
             id="password"
             type="password"

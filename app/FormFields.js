@@ -36,8 +36,14 @@ export default function FormFields({ fields, values, errors = {}, onChange, disa
                 id={f.id}
                 type={TEXTY[f.type]}
                 value={value ?? ""}
-                placeholder={f.placeholder || ""}
+                placeholder={f.placeholder || (f.type === "tel" ? "10-digit mobile number" : "")}
                 disabled={disabled}
+                inputMode={f.type === "tel" ? "numeric" : undefined}
+                autoComplete={
+                  f.type === "tel" ? "tel" : f.type === "email" ? "email" : undefined
+                }
+                min={f.type === "number" && f.min != null ? f.min : undefined}
+                max={f.type === "number" && f.max != null ? f.max : undefined}
                 aria-invalid={err ? "true" : undefined}
                 aria-describedby={describedBy}
                 onChange={(e) => onChange(f.id, e.target.value)}

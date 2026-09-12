@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
   return NextResponse.json({ form });
 }
 
-// Owner only: move it to another section, or open/close it.
+// Owner only: move it, rename it, open/close it, set a deadline or a limit.
 export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
@@ -21,6 +21,11 @@ export async function PATCH(request, { params }) {
     const form = await updateForm(id, {
       workspaceId: body?.workspaceId,
       open: body?.open,
+      title: body?.title,
+      thankYou: body?.thankYou,
+      closesAt: body?.closesAt,
+      maxResponses: body?.maxResponses,
+      accent: body?.accent,
     });
     if (!form) return NextResponse.json({ error: "Nothing to change." }, { status: 400 });
     return NextResponse.json({ form });

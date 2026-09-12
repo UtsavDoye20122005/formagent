@@ -277,6 +277,7 @@ select {
 /* --- auth ------------------------------------------------------------------ */
 
 .auth-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
+.auth-wrap.simple { grid-template-columns: 1fr; }
 
 .auth-art {
   position: relative; overflow: hidden;
@@ -538,3 +539,54 @@ td.wrap { white-space: normal; min-width: 230px; }
 }
 .auth-legal a { color: var(--ink-3); text-decoration: none; }
 .auth-legal a:hover { color: var(--accent); text-decoration: underline; }
+
+.label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.label-row { margin-bottom: 7px; }
+.label-row .label { margin-bottom: 0; }
+.linklike.small { font-size: 12.5px; }
+
+.form-logo { display: block; max-height: 56px; width: auto; margin: 0 0 18px; border-radius: 8px; }
+.deadline {
+  display: inline-block; margin: 0 0 20px; padding: 6px 11px;
+  border-radius: 999px; font-size: 13px; font-weight: 560;
+  background: var(--warn-soft); color: var(--warn);
+}
+
+/* --- form settings on the responses page ---------------------------------- */
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: start;
+}
+.card-title { font-size: 15px; font-weight: 640; margin: 0 0 4px; letter-spacing: -0.01em; }
+.settings-grid .field { margin-bottom: 18px; }
+.settings-grid .hint { margin-top: 6px; }
+
+.check { display: flex; align-items: center; gap: 9px; font-size: 14px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  padding: 0;
+}
+.swatch.none {
+  background:
+    linear-gradient(135deg, var(--panel-3) 46%, var(--line-2) 46%, var(--line-2) 54%, var(--panel-3) 54%);
+}
+.swatch.on { border-color: var(--ink); }
+
+.qr-card { text-align: center; }
+.qr-card .hint { text-align: left; }
+.qr {
+  display: block; margin: 14px auto; border-radius: 12px;
+  background: #fff; padding: 8px; max-width: 100%; height: auto;
+}
+
+@media (max-width: 640px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}

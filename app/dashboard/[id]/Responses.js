@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import FormSettings from "./FormSettings.js";
 
 function cellText(value) {
   if (Array.isArray(value)) return value.join(", ");
@@ -100,6 +101,32 @@ export default function Responses({ formId }) {
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/f/${form.id}` : "";
 
+  function statusLine() {
+    if (!form.open) return "closed";
+    if (form.maxResponses != null) {
+      const left = form.maxResponses - responses.length;
+      if (left <= 0) return "limit reached";
+      return `${left} more accepted`;
+    }
+    if (form.closesAt) {
+      const when = new Date(form.closesAt);
+      if (when.getTime() > Date.now()) {
+        return `closes ${when.toLocaleString(undefined, {
+          day: "numeric",
+          month: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        })}`;
+      }
+      return "deadline passed";
+    }
+    return "";
+  }
+
+  function applySaved(updated) {
+    setData((d) => (d ? { ...d, form: { ...d.form, ...updated } } : d));
+  }
+
   return (
     <>
       <div className="spread" style={{ marginBottom: 18 }}>
@@ -107,7 +134,7 @@ export default function Responses({ formId }) {
           <h1 style={{ marginBottom: 4 }}>{form.title}</h1>
           <p className="hint" style={{ margin: 0 }}>
             {responses.length} response{responses.length === 1 ? "" : "s"}
-            {!form.open && " · form is closed"}
+            {statusLine() && ` · ${statusLine()}`}
           </p>
         </div>
         <div className="row" style={{ flexWrap: "nowrap" }}>
@@ -135,7 +162,9 @@ export default function Responses({ formId }) {
         </p>
       </div>
 
-      <div className="card">
+      <FormSettings form={form} shareUrl={shareUrl} onSaved={applySaved} />
+
+      <div className="card" style={{ marginTop: 18 }}>
         {responses.length === 0 ? (
           <div className="empty">
             <p style={{ margin: 0 }}>No responses yet. Share the link above.</p>

@@ -28,31 +28,53 @@ export async function POST(request) {
   }
 
   const provider = aiProvider();
-  let engine = "rules";
-  let notice = "";
-  let draft = null;
 
-  if (provider === "groq") {
+  // When an AI is configured, it is the only thing allowed to write questions.
+  // The word-matching parser used to step in whenever the AI hiccuped, and it
+  // turned narration like "I am running a workshop next Saturday" into a form
+  // field. A clear "say that again" beats a broken form every time.
+  if (provider) {
+    let draft = null;
+    let failure = "";
+
     try {
-      draft = await generateWithGroq(instructions);
-      if (draft) engine = "groq";
+      draft = provider === "groq"
+        ? await generateWithGroq(instructions)
+        : await generateWithClaude(instructions);
     } catch (err) {
-      notice = `The AI could not be reached, so a basic parser built this instead. (${String(err.message || err).slice(0, 120)})`;
+      failure = String(err?.message || err);
     }
-  } else if (provider === "claude") {
-    try {
-      draft = await generateWithClaude(instructions);
-      if (draft) engine = "claude";
-    } catch (err) {
-      notice = `The AI could not be reached, so a basic parser built this instead. (${String(err.message || err).slice(0, 120)})`;
+
+    if (!draft) {
+      return NextResponse.json(
+        {
+          error: failure
+            ? "The form builder could not be reached just now. Wait a few seconds and try again."
+            : "That did not come through clearly enough to build a form. Try saying it again, listing the details you want to collect.",
+          detail: failure.slice(0, 200),
+        },
+        { status: 503 }
+      );
     }
-  } else {
-    notice =
-      "No AI key is set, so a basic word-matching parser built this. Add a free GROQ_API_KEY for forms that actually understand what you said.";
+
+    const form = normalizeForm(draft, instructions);
+
+    if (form.fields.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "No questions could be worked out from that. Try listing what you want to collect — for example: name, email, phone, which year they are in.",
+        },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({ form, engine: provider, notice: "" });
   }
 
-  if (!draft) draft = parseInstructions(instructions);
-
+  // No AI key at all: this is the unconfigured-setup case, so the basic parser
+  // is better than nothing, and we say plainly that that is what happened.
+  const draft = parseInstructions(instructions);
   const form = normalizeForm(draft, instructions);
 
   if (form.fields.length === 0) {
@@ -62,5 +84,8 @@ export async function POST(request) {
     );
   }
 
-  return NextResponse.json({ form, engine, notice });
+  const notice =
+    "No AI key is set, so a basic word-matching parser built this. Add a free GROQ_API_KEY for forms that actually understand what you said.";
+
+  return NextResponse.json({ form, engine: "rules", notice });
 }

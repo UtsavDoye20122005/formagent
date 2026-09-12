@@ -12,6 +12,19 @@ export async function generateMetadata({ params }) {
   };
 }
 
+const CLOSED_LINES = {
+  closed: "This form is closed and isn't accepting any more responses.",
+  deadline: "The deadline for this form has passed, so it isn't taking any more responses.",
+  full: "This form has had all the responses it was set to accept.",
+};
+
+// The owner can tint their form. One colour is enough — everything else in the
+// page is derived from it.
+function accentStyle(accent) {
+  if (!/^#[0-9a-f]{6}$/i.test(String(accent || ""))) return undefined;
+  return { "--accent": accent, "--accent-2": accent };
+}
+
 export default async function FormPage({ params }) {
   const { id } = await params;
   const form = await getPublicForm(id);
@@ -32,11 +45,11 @@ export default async function FormPage({ params }) {
 
   if (!form.open) {
     return (
-      <main className="shell narrow">
+      <main className="shell narrow" style={accentStyle(form.accent)}>
         <div className="card" style={{ marginTop: 48 }}>
           <h1 style={{ fontSize: 22 }}>{form.title}</h1>
           <p className="lede" style={{ marginBottom: 0 }}>
-            This form is closed and isn&apos;t accepting any more responses.
+            {CLOSED_LINES[form.closedReason] || CLOSED_LINES.closed}
           </p>
         </div>
       </main>
@@ -44,7 +57,7 @@ export default async function FormPage({ params }) {
   }
 
   return (
-    <main className="shell narrow">
+    <main className="shell narrow" style={accentStyle(form.accent)}>
       <PublicForm form={form} />
       <p className="footer">Made with FormAgent</p>
     </main>

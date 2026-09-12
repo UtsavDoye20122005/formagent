@@ -3,6 +3,19 @@
 import { useState } from "react";
 import FormFields from "../../FormFields.js";
 
+function deadlineLine(iso) {
+  if (!iso) return "";
+  const when = new Date(iso);
+  if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return "";
+  return when.toLocaleString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function PublicForm({ form }) {
   const [values, setValues] = useState(() => {
     const init = {};
@@ -77,9 +90,18 @@ export default function PublicForm({ form }) {
 
   return (
     <form className="card" onSubmit={submit} style={{ marginTop: 32 }} noValidate>
+      {form.logoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="form-logo" src={form.logoUrl} alt="" />
+      )}
+
       <h1 style={{ fontSize: 24 }}>{form.title}</h1>
       {form.description && <p className="lede" style={{ marginBottom: 24 }}>{form.description}</p>}
       {!form.description && <div style={{ height: 12 }} />}
+
+      {deadlineLine(form.closesAt) && (
+        <p className="deadline">Closes {deadlineLine(form.closesAt)}</p>
+      )}
 
       {failure && <div className="note bad">{failure}</div>}
       {Object.keys(errors).length > 0 && (
