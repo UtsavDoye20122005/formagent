@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "../../lib/supabase/server.js";
 import { isConfigured } from "../../lib/supabase/config.js";
@@ -60,6 +61,12 @@ export default async function LoginPage() {
         <div className="auth-card">
           <LoginForm />
         </div>
+
+        <p className="auth-legal">
+          <Link href="/privacy">Privacy Policy</Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/terms">Terms of Service</Link>
+        </p>
       </section>
     </main>
   );
