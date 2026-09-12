@@ -67,6 +67,31 @@ function FileCell({ path }) {
   );
 }
 
+
+// The last seven days of activity, for the little column chart. Built from the
+// page we already have rather than another round trip.
+function weekOf(responses) {
+  const days = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push({
+      i: 6 - i,
+      key: d.toDateString(),
+      label: ["S", "M", "T", "W", "T", "F", "S"][d.getDay()],
+      count: 0,
+    });
+  }
+  const byKey = new Map(days.map((d) => [d.key, d]));
+  for (const r of responses) {
+    const k = new Date(r.submittedAt).toDateString();
+    const hit = byKey.get(k);
+    if (hit) hit.count += 1;
+  }
+  return days;
+}
+
 export default function Responses({ formId }) {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
@@ -144,6 +169,10 @@ export default function Responses({ formId }) {
     return "";
   }
 
+  const week = weekOf(everything?.responses || responses);
+  const weekTop = Math.max(1, ...week.map((d) => d.count));
+  const todayCount = week[week.length - 1]?.count || 0;
+
   function applySaved(updated) {
     setData((d) => (d ? { ...d, form: { ...d.form, ...updated } } : d));
   }
@@ -190,18 +219,20 @@ export default function Responses({ formId }) {
 
   return (
     <>
-      <div className="spread" style={{ marginBottom: 18 }}>
+      <div className="spread" style={{ marginBottom: 22 }}>
         <div>
-          <h1 style={{ marginBottom: 4 }}>{form.title}</h1>
-          <p className="hint" style={{ margin: 0 }}>
-            {total} response{total === 1 ? "" : "s"}
-            {statusLine() && ` · ${statusLine()}`}
-          </p>
+          <h1 style={{ marginBottom: 8 }}>{form.title}</h1>
+          <div className="row">
+            <span className={`tag ${form.open ? "good" : ""}`}>
+              {form.open ? "Open" : "Closed"}
+            </span>
+            {statusLine() && <span className="hint" style={{ margin: 0 }}>{statusLine()}</span>}
+          </div>
         </div>
         <div className="row" style={{ flexWrap: "nowrap" }}>
           <button className="btn small" onClick={refresh}>Refresh</button>
           <button className="btn small" onClick={copyForSheets} disabled={total === 0 || working}>
-            {copied ? "Copied — paste into Sheets" : "Copy for Google Sheets"}
+            {copied ? "Copied — paste into Sheets" : "Copy for Sheets"}
           </button>
           <button className="btn small primary" onClick={downloadCsv} disabled={total === 0 || working}>
             Download CSV
@@ -209,18 +240,42 @@ export default function Responses({ formId }) {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 18 }}>
-        <label className="label">Share link</label>
-        <div className="linkbox">
-          <code>{shareUrl}</code>
-          <button className="btn small" onClick={() => navigator.clipboard?.writeText(shareUrl)}>
-            Copy
-          </button>
+      <div className="bento">
+        <div className="card">
+          <div className="spread" style={{ marginBottom: 10 }}>
+            <span className="label" style={{ margin: 0 }}>Responses</span>
+            {todayCount > 0 && <span className="tag good">↑ {todayCount} today</span>}
+          </div>
+          <p className="stat-big">{total}</p>
+          <div className="spark" aria-hidden="true">
+            {week.map((d) => (
+              <div key={d.key}>
+                <i
+                  style={{
+                    height: `${Math.round((d.count / weekTop) * 88) + 8}px`,
+                    animationDelay: `${d.i * 45}ms`,
+                  }}
+                  title={`${d.count} on ${d.key}`}
+                />
+                <small>{d.label}</small>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="hint">
-          To get these answers into Google Sheets: press <strong>Copy for Google Sheets</strong>,
-          open a blank sheet, click cell A1 and paste. Every column lands in place.
-        </p>
+
+        <div className="card">
+          <span className="label">Share link</span>
+          <div className="linkbox">
+            <code>{shareUrl}</code>
+            <button className="btn small" onClick={() => navigator.clipboard?.writeText(shareUrl)}>
+              Copy
+            </button>
+          </div>
+          <p className="hint">
+            Press <strong>Copy for Sheets</strong>, open a blank sheet, click A1 and paste.
+            Every column lands in place.
+          </p>
+        </div>
       </div>
 
       <FormSettings form={form} shareUrl={shareUrl} onSaved={applySaved} />

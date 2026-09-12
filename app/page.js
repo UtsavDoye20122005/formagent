@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Header from "./Header.js";
 import Builder from "./Builder.js";
 import SetupNotice from "./SetupNotice.js";
+import Landing from "./Landing.js";
 import { currentUser } from "../lib/supabase/server.js";
 import { isConfigured } from "../lib/supabase/config.js";
 import { listWorkspaces } from "../lib/db.js";
@@ -26,8 +27,9 @@ export default async function Home({ searchParams }) {
     );
   }
 
+  // Signed out, this is the front door rather than a login box.
   const user = await currentUser();
-  if (!user) redirect("/login");
+  if (!user) return <Landing />;
 
   let workspaces = [];
   let loadError = "";

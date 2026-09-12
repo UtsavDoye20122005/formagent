@@ -50,6 +50,8 @@ export default function PublicForm({ form }) {
   }, [form.fields]);
 
   const lastStep = step >= pages.length - 1;
+  // Roughly eight seconds a question, rounded up. People deserve to know.
+  const minutes = Math.max(1, Math.round((form.fields.length * 8) / 60));
   const current = pages[step] || [];
 
   function change(id, value) {
@@ -162,19 +164,23 @@ export default function PublicForm({ form }) {
   }
 
   return (
-    <form className="card" onSubmit={submit} style={{ marginTop: 32 }} noValidate>
-      {form.logoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="form-logo" src={form.logoUrl} alt="" />
-      )}
+    <form className="form-card" onSubmit={submit} noValidate>
+      <header className="form-band">
+        {form.logoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="form-logo" src={form.logoUrl} alt="" />
+        )}
 
-      <h1 style={{ fontSize: 24 }}>{form.title}</h1>
-      {form.description && <p className="lede" style={{ marginBottom: 24 }}>{form.description}</p>}
-      {!form.description && <div style={{ height: 12 }} />}
+        <h1>{form.title}</h1>
+        {form.description && <p className="lede">{form.description}</p>}
 
-      {deadlineLine(form.closesAt) && (
-        <p className="deadline">Closes {deadlineLine(form.closesAt)}</p>
-      )}
+        <div className="form-chips">
+          {deadlineLine(form.closesAt) && (
+            <span className="deadline">Closes {deadlineLine(form.closesAt)}</span>
+          )}
+          <span className="tag">{minutes} minute{minutes === 1 ? "" : "s"}</span>
+        </div>
+      </header>
 
       {pages.length > 1 && (
         <div className="steps" aria-label={`Step ${step + 1} of ${pages.length}`}>
@@ -185,48 +191,51 @@ export default function PublicForm({ form }) {
         </div>
       )}
 
-      {failure && <div className="note bad">{failure}</div>}
-      {Object.keys(errors).length > 0 && (
-        <div className="note bad">Some answers need a look — see below.</div>
-      )}
-
-      <FormFields
-        fields={current}
-        values={values}
-        errors={errors}
-        onChange={change}
-        onFile={handleFile}
-        uploading={uploading}
-      />
-
-      {/* Hidden from people, irresistible to scripts. */}
-      <div className="trap" aria-hidden="true">
-        <label htmlFor="website">Leave this empty</label>
-        <input
-          id="website"
-          name="website"
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
-          value={trap}
-          onChange={(e) => setTrap(e.target.value)}
-        />
-      </div>
-
-      <div className="row" style={{ marginTop: 10 }}>
-        {step > 0 && (
-          <button className="btn" type="button" onClick={back} disabled={busy}>
-            Back
-          </button>
+      <div className="form-body">
+        {failure && <div className="note bad">{failure}</div>}
+        {Object.keys(errors).length > 0 && (
+          <div className="note bad">Some answers need a look — see below.</div>
         )}
-        <button className="btn primary" type="submit" disabled={busy}>
-          {busy ? <><span className="spin" /> Sending…</> : lastStep ? form.submitLabel : "Next"}
-        </button>
+
+        <FormFields
+          fields={current}
+          values={values}
+          errors={errors}
+          onChange={change}
+          onFile={handleFile}
+          uploading={uploading}
+        />
+
+        {/* Hidden from people, irresistible to scripts. */}
+        <div className="trap" aria-hidden="true">
+          <label htmlFor="website">Leave this empty</label>
+          <input
+            id="website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={trap}
+            onChange={(e) => setTrap(e.target.value)}
+          />
+        </div>
       </div>
 
-      <p className="hint" style={{ marginTop: 12 }}>
-        Fields marked <span className="req" aria-hidden="true">*</span> are required.
-      </p>
+      <footer className="form-actions">
+        <p className="hint">
+          Questions marked <span className="req" aria-hidden="true">*</span> are required
+        </p>
+        <div className="row" style={{ flexWrap: "nowrap" }}>
+          {step > 0 && (
+            <button className="btn" type="button" onClick={back} disabled={busy}>
+              Back
+            </button>
+          )}
+          <button className="btn primary big" type="submit" disabled={busy}>
+            {busy ? <><span className="spin" /> Sending…</> : lastStep ? form.submitLabel : "Continue →"}
+          </button>
+        </div>
+      </footer>
     </form>
   );
 }

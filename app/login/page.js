@@ -36,10 +36,10 @@ export default async function LoginPage() {
 
         <div className="auth-pitch">
           <p className="eyebrow">Forms without the fiddling</p>
-          <h2>Describe the form. Get the link.</h2>
+          <h2>Say it out loud. Get a form back.</h2>
           <p>
-            No dragging fields around. No twenty clicks per question. Just say what
-            you want and send the link.
+            No dragging fields around. No twenty clicks per question. Say what you
+            want and send the link.
           </p>
 
           <ul className="auth-points">

@@ -9,6 +9,8 @@ const EXAMPLES = [
   "Guest registration for a campus tech talk — name, email, branch, whether they need a parking pass, and t-shirt size.",
 ];
 
+const WAVE = [0, 130, 260, 90, 200, 40, 310, 160, 70, 240, 110, 20];
+
 const TYPES = [
   ["text", "Short text"],
   ["textarea", "Long text"],
@@ -316,7 +318,7 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
 
       {loadError && <div className="note bad">{loadError}</div>}
 
-      <div className="compose">
+      <div className={`compose${listening ? " listening" : ""}`}>
         <label className="label" htmlFor="instructions" style={{ position: "absolute", left: -9999 }}>
           What should this form collect?
         </label>
@@ -335,8 +337,17 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
               disabled={busy || transcribing}
               aria-pressed={listening}
             >
-              {transcribing ? <><span className="spin" /> Writing it down…</>
-                : listening ? "◼ Stop" : "🎤 Speak"}
+              <span className="bead" aria-hidden="true">
+                {transcribing ? <span className="spin" /> : listening ? "\u25A0" : "\u25CF"}
+              </span>
+              {transcribing ? "Writing it down…" : listening ? "Stop" : "Speak"}
+              {listening && (
+                <span className="wave small" aria-hidden="true">
+                  {WAVE.map((d, i) => (
+                    <i key={i} style={{ animationDelay: `${d}ms` }} />
+                  ))}
+                </span>
+              )}
             </button>
           )}
 

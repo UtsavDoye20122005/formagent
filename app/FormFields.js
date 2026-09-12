@@ -89,7 +89,12 @@ export default function FormFields({
             )}
 
             {f.type === "radio" && (
-              <div className="choices" role="radiogroup" aria-labelledby={f.id}>
+              <div
+                className="choices"
+                data-cols={f.options.length === 2 ? "2" : undefined}
+                role="radiogroup"
+                aria-labelledby={f.id}
+              >
                 {f.options.map((o) => (
                   <label className="choice" key={o}>
                     <input
@@ -136,7 +141,7 @@ export default function FormFields({
             {f.type === "boolean" && (
               // Two options, neither picked to begin with. A single ticked-or-not
               // box quietly answers "no" for everyone who never looked at it.
-              <div className="choices" role="radiogroup" aria-labelledby={f.id}>
+              <div className="choices" data-cols="2" role="radiogroup" aria-labelledby={f.id}>
                 {[["yes", "Yes", true], ["no", "No", false]].map(([key, text, val]) => (
                   <label className="choice" key={key}>
                     <input

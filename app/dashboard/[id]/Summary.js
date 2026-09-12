@@ -98,7 +98,7 @@ function QuestionCard({ field, responses }) {
     }));
     body = (
       <>
-        <p className="hero">
+        <p className="hero-num">
           {avg.toFixed(1)}
           <span className="hero-unit">out of {max}</span>
         </p>
