@@ -6,6 +6,10 @@ import { currentUser } from "../../../lib/supabase/server.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Writing a 15-question form can take a model longer than the default ten
+// seconds, and the gateway hanging up mid-thought is the worst failure of all
+// — the person has already spoken.
+export const maxDuration = 60;
 
 export async function POST(request) {
   // Signed in only — otherwise a stranger could run up the API bill.

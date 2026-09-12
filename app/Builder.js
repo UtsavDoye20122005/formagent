@@ -22,6 +22,15 @@ const TYPES = [
   ["file", "File upload"],
 ];
 
+function prettyDeadline(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString(undefined, {
+    weekday: "short", day: "numeric", month: "short",
+    hour: "numeric", minute: "2-digit",
+  });
+}
+
 // Turns the "starts a new page" flags into real page numbers. The first field
 // can never start a page — it is already on page one.
 function renumber(fields) {
@@ -130,6 +139,9 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
           const text = String(data.text || "").trim();
           if (text) {
             setInstructions((prev) => (prev.trim() ? `${prev.trim()} ${text}` : text));
+          } else {
+            // Better to say so than to paste in a "Thank you." nobody said.
+            setError("Didn't catch anything that time — try again, a bit closer to the mic.");
           }
         } catch (err) {
           setError(String(err.message || err));
@@ -212,7 +224,11 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
       const res = await fetch("/api/forms", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ form, workspaceId: workspaceId || null }),
+        body: JSON.stringify({
+          form,
+          workspaceId: workspaceId || null,
+          closesAt: form.closesAt || "",
+        }),
       });
       if (res.status === 401) {
         window.location.href = "/login";
@@ -410,6 +426,22 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
+
+            {form.closesAt && (
+              <div className="note info deadline-note">
+                <span>
+                  Heard a deadline — this form will stop accepting answers on{" "}
+                  <strong>{prettyDeadline(form.closesAt)}</strong>.
+                </span>
+                <button
+                  className="btn small ghost"
+                  type="button"
+                  onClick={() => setForm({ ...form, closesAt: "" })}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
 
             <h2 style={{ marginTop: 22, marginBottom: 10 }}>
               Questions <span className="tag">{form.fields.length}</span>

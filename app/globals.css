@@ -1430,3 +1430,6 @@ h1, h2, h3, .hero h1, .auth-pitch h2 { text-wrap: balance; }
 .brand, h1, .hero h1, .form-band h1, .auth-pitch h2, .stat-big {
   font-synthesis-weight: none;
 }
+
+.deadline-note { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.deadline-note .btn { flex: none; }

@@ -13,6 +13,8 @@ export async function POST(request) {
     if (!body) return NextResponse.json({ error: "Send JSON." }, { status: 400 });
 
     const form = normalizeForm(body.form || {}, "");
+    // The builder may have had the deadline edited or cleared by hand.
+    if (typeof body.closesAt === "string") form.closesAt = body.closesAt.trim();
     if (form.fields.length === 0) {
       return NextResponse.json({ error: "A form needs at least one question." }, { status: 400 });
     }
