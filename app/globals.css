@@ -1622,3 +1622,34 @@ tbody tr:hover .row-del, tbody tr:focus-within .row-del { opacity: 1; }
   overflow-wrap: anywhere;
 }
 .unanswered { color: var(--ink-3); font-style: italic; font-size: 14px; }
+
+/* Editing the questions of a form that is already published. Shut by default. */
+.edit-shut { padding: 18px 22px; margin-bottom: 16px; }
+.edit-shut .spread { align-items: center; gap: 14px; flex-wrap: wrap; }
+
+/* On the editing screen the tools have to be findable, not discovered by
+   accident on hover — a teacher looking for "how do I move this up" will not
+   wave the mouse around until something appears. */
+.preview-field.editing { align-items: flex-start; }
+.preview-field.editing .row .btn.ghost { opacity: 1; }
+
+/* Help text and options are inputs, not headings. Inside .preview-field the
+   plain text inputs are deliberately borderless so the question wording reads
+   like a title; these two need to look typeable. */
+.preview-field .q-sub[type="text"] {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  border-color: var(--line);
+  background: var(--sunken);
+  color: var(--ink-2);
+}
+.preview-field .q-sub[type="text"]:focus {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+/* A question that cannot be deleted should look it, not just refuse when
+   pressed. The title attribute explains why on hover. */
+.preview-field.editing .btn.ghost:disabled { opacity: 0.3; cursor: not-allowed; }
+.preview-field.editing select:disabled { opacity: 0.55; cursor: not-allowed; }

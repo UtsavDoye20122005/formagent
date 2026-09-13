@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPublicForm, updateForm, deleteForm } from "../../../../lib/db.js";
+import { getPublicForm, updateForm, updateFormFields, deleteForm } from "../../../../lib/db.js";
 import { fail, readJson } from "../../../../lib/api.js";
 
 export const runtime = "nodejs";
@@ -18,6 +18,15 @@ export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
     const body = await readJson(request);
+
+    // Questions are edited on their own, because changing them has to be
+    // checked against the answers already sitting underneath them.
+    if (Array.isArray(body?.fields)) {
+      const updated = await updateFormFields(id, body.fields);
+      if (!updated) return NextResponse.json({ error: "Form not found." }, { status: 404 });
+      return NextResponse.json({ form: updated });
+    }
+
     const form = await updateForm(id, {
       workspaceId: body?.workspaceId,
       open: body?.open,

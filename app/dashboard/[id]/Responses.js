@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import FormSettings from "./FormSettings.js";
+import EditQuestions from "./EditQuestions.js";
 import Summary from "./Summary.js";
 import { signedFileUrl } from "../../../lib/uploads.js";
 import OneResponse from "./OneResponse.js";
@@ -415,6 +416,8 @@ export default function Responses({ formId }) {
           </p>
         </div>
       </div>
+
+      <EditQuestions form={form} responseCount={total} onSaved={applySaved} />
 
       <FormSettings form={form} shareUrl={shareUrl} onSaved={applySaved} />
 
