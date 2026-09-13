@@ -53,7 +53,6 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [engine, setEngine] = useState("");
   const [published, setPublished] = useState(null);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState({});
@@ -207,7 +206,6 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Something went wrong.");
       setForm(data.form);
-      setEngine(data.engine);
       setNotice(data.notice || "");
       setPreview({});
     } catch (err) {
@@ -398,12 +396,7 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
       {form && (
         <>
           <div className="card">
-            <div className="spread" style={{ marginBottom: 16 }}>
-              <h2>Check it over</h2>
-              <span className={`tag${engine === "groq" || engine === "claude" ? " accent" : ""}`}>
-                {engine === "groq" || engine === "claude" ? "Written by AI" : "Built by the basic parser"}
-              </span>
-            </div>
+            <h2 style={{ marginBottom: 16 }}>Check it over</h2>
 
             {notice && <div className="note info">{notice}</div>}
 
