@@ -301,6 +301,38 @@ function QuestionCard({ field, responses, splitField, segments }) {
         </>
       );
     }
+  } else if (field.type === "time") {
+    // Which slots people actually picked, earliest first. A teacher reads this
+    // to find the hour everyone wants and the one nobody does.
+    const times = answered
+      .map((r) => String(r.answers?.[field.id] || "").trim())
+      .filter((t) => /^\d{1,2}:\d{2}/.test(t))
+      .sort();
+    if (times.length) {
+      const pretty = (t) => {
+        const [h, m] = t.split(":").map(Number);
+        const ampm = h < 12 ? "am" : "pm";
+        const h12 = h % 12 === 0 ? 12 : h % 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+      };
+      const counts = new Map();
+      for (const t of times) {
+        const k = t.slice(0, 5);
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      const rows = [...counts].map(([k, count]) => ({ label: pretty(k), count }));
+      const busiest = [...counts].sort((a, b) => b[1] - a[1])[0];
+      body = (
+        <>
+          <div className="stats" style={{ marginBottom: 16 }}>
+            <Stat label="earliest" value={pretty(times[0].slice(0, 5))} />
+            <Stat label="latest" value={pretty(times[times.length - 1].slice(0, 5))} />
+            <Stat label="most picked" value={pretty(busiest[0])} />
+          </div>
+          <Bars rows={rows} total={times.length} keepOrder />
+        </>
+      );
+    }
   } else if (TEXTY.has(field.type)) {
     const written = answered.map((r) => String(r.answers?.[field.id])).filter(Boolean);
     const unique = new Set(written.map((w) => w.toLowerCase().trim())).size;

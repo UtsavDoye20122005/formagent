@@ -1303,13 +1303,31 @@ tbody tr:last-child td { border-bottom: 0; }
 .qr { display: block; margin: 14px auto; border-radius: var(--r); background: #fff; padding: 8px; max-width: 100%; height: auto; }
 
 /* charts */
-.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 18px; align-items: start; }
-.summary-card { padding: 22px; }
+/* A grid makes every row as tall as its tallest card, so a donut sitting next
+   to a list of twenty quotes leaves a wall of empty space. Columns let each
+   card stop where its content stops and the next one start right underneath.
+   300px is the minimum readable card width; 3 is the most columns we ever use. */
+.summary-grid { columns: 300px 3; column-gap: 16px; margin-bottom: 18px; }
+.summary-card {
+  padding: 22px;
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin: 0 0 16px;
+  display: inline-block;
+  width: 100%;
+}
 .summary-q { font-size: 15px; font-weight: 640; margin: 0 0 4px; letter-spacing: -0.012em; line-height: 1.35; }
 
 .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.bars li { display: grid; grid-template-columns: minmax(0, 7.5rem) 1fr auto; align-items: center; gap: 12px; }
-.bar-label { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars li { display: grid; grid-template-columns: minmax(0, 8rem) 1fr auto; align-items: center; gap: 12px; }
+/* "Paper Presentation" used to clip to "Paper Presentati…". Two lines instead
+   of an ellipsis — the option name is the thing being measured, so it has to
+   be readable. */
+.bar-label {
+  font-size: 13px; color: var(--ink-2); line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .bar-track { height: 10px; border-radius: 999px; background: var(--sunken-2); overflow: hidden; }
 .bar-fill {
   display: block; height: 100%; min-width: 6px;
