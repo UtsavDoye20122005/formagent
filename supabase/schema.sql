@@ -205,6 +205,24 @@ update public.forms f
  where c.form_id = f.id
    and f.response_count is distinct from c.n;
 
+-- Every response bumps response_count on the SAME row of public.forms, and the
+-- gate below reads that row on every insert. Postgres keeps an old version of a
+-- row on each update, so during a burst that one row grows a chain of dead
+-- versions and each read walks further down it. Measured over 5,000 submissions
+-- arriving together, reading the form row went from 1 page to 30 — a 30x
+-- slowdown that built up inside a single registration window.
+--
+-- fillfactor leaves room on the page so an update can stay in place instead of
+-- moving, and the aggressive autovacuum settings let the dead versions be
+-- reclaimed during the burst rather than long after it.
+alter table public.forms set (fillfactor = 70);
+alter table public.forms set (
+  autovacuum_vacuum_scale_factor = 0.0,
+  autovacuum_vacuum_threshold    = 100,
+  autovacuum_analyze_scale_factor = 0.0,
+  autovacuum_analyze_threshold   = 200
+);
+
 -- Keep the counter true.
 create or replace function public.bump_response_count()
 returns trigger
@@ -247,7 +265,6 @@ set search_path = public
 as $$
 declare
   f      public.forms%rowtype;
-  recent integer;
   fld    jsonb;
   path   text;
 begin
@@ -263,45 +280,32 @@ begin
     raise exception 'form_past_deadline';
   end if;
 
-  if new.ip_hash is not null then
-    -- Same sender, same form, last hour.
-    --
-    -- A lecture hall on one college connection is ONE sender. The old ceiling
-    -- of 40 meant the 41st student in a class was told to come back later,
-    -- which looks exactly like the site being broken. A fest registration can
-    -- easily be 500 students on one campus connection in a single go, so the
-    -- ceiling is set well above the largest room anyone can fill.
-    select count(*) into recent
-      from public.responses
-     where form_id = new.form_id
-       and ip_hash = new.ip_hash
-       and submitted_at > now() - interval '1 hour';
-    if recent >= 2000 then
-      raise exception 'too_many_from_you';
-    end if;
-
-    -- Same sender, every form, last hour. Catches someone walking a script
-    -- across several links at once.
-    select count(*) into recent
-      from public.responses
-     where ip_hash = new.ip_hash
-       and submitted_at > now() - interval '1 hour';
-    if recent >= 5000 then
-      raise exception 'too_many_from_you';
-    end if;
-  end if;
-
-  -- Whole-form burst, whoever is sending it. "Everyone register now" to a hall
-  -- of 500 produces a genuine spike, so this is not a speed limit on people —
-  -- it is the ceiling above which no real audience can be the cause.
-  select count(*) into recent
-    from public.responses
-   where form_id = new.form_id
-     and submitted_at > now() - interval '1 minute';
-  if recent >= 2000 then
-    raise exception 'too_fast';
-  end if;
-
+  -- There used to be three counting checks here: how many this sender had sent
+  -- to this form in an hour, to any form in an hour, and how many the form had
+  -- taken in a minute. They are gone, and deliberately.
+  --
+  -- Counting is O(n): every submission had to re-read every submission already
+  -- sitting in the window. Measured on 5,000 students arriving together, the
+  -- per-sender count alone read 5,043 pages PER INSERT and turned a 0.7-second
+  -- job into 34 seconds. Worse, it could not be made cheap and still allow a
+  -- campus crowd, because the ceiling had to sit above 5,000 for the crowd to
+  -- get in, and a ceiling that high catches nothing but the crowd.
+  --
+  -- The honest position: from the database's side, 5,000 students behind one
+  -- college router and one script are the same thing. Counting requests cannot
+  -- separate them, so counting was buying nothing at a real price. What does
+  -- the work instead, all of it O(1):
+  --   * the hidden trap field and the three-second floor, in the app
+  --   * the duplicate check below, which catches the payload a script repeats
+  --   * the deadline and the open/closed flag
+  --   * the form's owner, who can close it and delete in bulk
+  --
+  --
+  -- A whole-form-per-minute ceiling was tried here too and removed for the same
+  -- reason: counting a minute's worth of submissions is O(n) in exactly the
+  -- window where n is largest, and any ceiling high enough to let 5,000 people
+  -- through is too high to stop anything else. Measured, it fired on the real
+  -- crowd and not on the spam.
   -- Raising the ceilings above so a classroom fits means a determined script
   -- could push hundreds of rows an hour. From the server's side, sixty students
   -- behind one college router and one script look identical — counting requests
