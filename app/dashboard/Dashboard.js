@@ -209,13 +209,6 @@ export default function Dashboard({ initialWorkspaces, initialForms, loadError }
 
           <div className="side-heading">Your sections</div>
 
-          {workspaces.length === 0 && !adding && (
-            <p className="hint" style={{ padding: "2px 10px 8px" }}>
-              None yet. Sections are yours to name — &ldquo;College&rdquo;,
-              &ldquo;AIESEC&rdquo;, a client&apos;s name.
-            </p>
-          )}
-
           {workspaces.map((w) =>
             renamingId === w.id ? (
               <div className="side-rename" key={w.id}>
