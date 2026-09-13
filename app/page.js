@@ -8,6 +8,7 @@ import { currentUser } from "../lib/supabase/server.js";
 import { isConfigured } from "../lib/supabase/config.js";
 import { listWorkspaces } from "../lib/db.js";
 import { aiProvider } from "../lib/ai.js";
+import { needsSetup } from "../lib/profile.js";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,10 @@ export default async function Home({ searchParams }) {
   // Signed out, this is the front door rather than a login box.
   const user = await currentUser();
   if (!user) return <Landing />;
+
+  // Asked once, the first time somebody arrives. Signing in with Google should
+  // not silently publish the name on their Google account.
+  if (needsSetup(user)) redirect("/account?first=1");
 
   let workspaces = [];
   let loadError = "";
