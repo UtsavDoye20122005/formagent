@@ -1,4 +1,4 @@
--- JiffyThat database schema
+-- FormAgent database schema
 -- Paste this whole file into Supabase → SQL Editor → New query → Run.
 -- Safe to run more than once.
 
@@ -220,6 +220,8 @@ as $$
 declare
   f      public.forms%rowtype;
   recent integer;
+  fld    jsonb;
+  path   text;
 begin
   select * into f from public.forms where id = new.form_id;
 
@@ -235,12 +237,17 @@ begin
 
   if new.ip_hash is not null then
     -- Same sender, same form, last hour.
+    --
+    -- A lecture hall on one college connection is ONE sender. The old ceiling
+    -- of 40 meant the 41st student in a class was told to come back later,
+    -- which looks exactly like the site being broken. 400 covers any room a
+    -- teacher can fill and still stops a script cold.
     select count(*) into recent
       from public.responses
      where form_id = new.form_id
        and ip_hash = new.ip_hash
        and submitted_at > now() - interval '1 hour';
-    if recent >= 40 then
+    if recent >= 400 then
       raise exception 'too_many_from_you';
     end if;
 
@@ -250,19 +257,71 @@ begin
       from public.responses
      where ip_hash = new.ip_hash
        and submitted_at > now() - interval '1 hour';
-    if recent >= 120 then
+    if recent >= 800 then
       raise exception 'too_many_from_you';
     end if;
   end if;
 
-  -- Whole-form burst, whoever is sending it.
+  -- Whole-form burst, whoever is sending it. A teacher saying "fill it in now"
+  -- to sixty students produces a genuine spike, so this is not a speed limit
+  -- on people — it is the ceiling above which no classroom can be the cause.
   select count(*) into recent
     from public.responses
    where form_id = new.form_id
      and submitted_at > now() - interval '1 minute';
-  if recent >= 40 then
+  if recent >= 600 then
     raise exception 'too_fast';
   end if;
+
+  -- Raising the ceilings above so a classroom fits means a determined script
+  -- could push hundreds of rows an hour. From the server's side, sixty students
+  -- behind one college router and one script look identical — counting requests
+  -- cannot tell them apart. What CAN: sixty students never send byte-identical
+  -- answers, and a script usually sends nothing else. So the same sender
+  -- repeating an identical answer inside a minute is refused.
+  --
+  -- Guarded by the 8-character test so a one-question "Yes / No" poll, where
+  -- a whole class genuinely does answer identically, is left alone. Any form
+  -- asking a name or an email clears that bar, and two different people do not
+  -- share one.
+  if new.ip_hash is not null
+     and exists (
+       select 1 from jsonb_each_text(coalesce(new.answers, '{}'::jsonb)) as kv(k, v)
+        where length(v) >= 8
+     )
+     and exists (
+       select 1 from public.responses r
+        where r.form_id = new.form_id
+          and r.ip_hash = new.ip_hash
+          and r.submitted_at > now() - interval '1 minute'
+          and r.answers = new.answers
+     )
+  then
+    raise exception 'already_sent';
+  end if;
+
+  -- An upload answer is only the path the file landed at. Nothing stopped a
+  -- hand-made request from naming a file that was never uploaded, which would
+  -- show a resume in the dashboard that opens to nothing. Check it is really
+  -- there, and really inside this form's own folder.
+  for fld in select * from jsonb_array_elements(coalesce(f.fields, '[]'::jsonb))
+  loop
+    if fld->>'type' = 'file' then
+      path := nullif(trim(new.answers->>(fld->>'id')), '');
+      if path is not null then
+        if split_part(path, '/', 1) <> new.form_id then
+          raise exception 'file_not_uploaded';
+        end if;
+        if not exists (
+          select 1 from storage.objects
+           where bucket_id = 'form-files'
+             and name = path
+        ) then
+          raise exception 'file_not_uploaded';
+        end if;
+      end if;
+    end if;
+  end loop;
 
   return new;
 end;

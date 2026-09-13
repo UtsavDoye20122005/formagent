@@ -300,6 +300,11 @@ h3 {
 .note.good { background: var(--good-soft); border-color: rgba(13,122,82,0.22); color: var(--good); }
 .note.bad  { background: var(--bad-soft);  border-color: rgba(192,42,34,0.22);  color: var(--bad); }
 .note.info { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-deep); }
+.note.warn { background: rgba(180,83,9,0.09); border-color: rgba(180,83,9,0.24); color: #8A4008; }
+.draft-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.draft-note .btn { flex: none; }
+.hint.counter { text-align: right; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.hint.counter.over { color: var(--bad); font-weight: 600; }
 
 .tag {
   display: inline-flex;

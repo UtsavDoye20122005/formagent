@@ -1,5 +1,7 @@
 "use client";
 
+import { MAX_ANSWER_CHARS } from "../lib/schema.js";
+
 const TEXTY = {
   text: "text",
   email: "email",
@@ -59,15 +61,25 @@ export default function FormFields({
             )}
 
             {f.type === "textarea" && (
-              <textarea
-                id={f.id}
-                value={value ?? ""}
-                placeholder={f.placeholder || ""}
-                disabled={disabled}
-                aria-invalid={err ? "true" : undefined}
-                aria-describedby={describedBy}
-                onChange={(e) => onChange(f.id, e.target.value)}
-              />
+              <>
+                <textarea
+                  id={f.id}
+                  value={value ?? ""}
+                  placeholder={f.placeholder || ""}
+                  disabled={disabled}
+                  aria-invalid={err ? "true" : undefined}
+                  aria-describedby={describedBy}
+                  onChange={(e) => onChange(f.id, e.target.value)}
+                />
+                {/* Only appears once the answer is long enough for the limit to
+                    be a real risk, so short answers are not nagged at. */}
+                {String(value ?? "").length > MAX_ANSWER_CHARS * 0.8 && (
+                  <p className={`hint counter${String(value ?? "").length > MAX_ANSWER_CHARS ? " over" : ""}`}>
+                    {String(value ?? "").length.toLocaleString()} of{" "}
+                    {MAX_ANSWER_CHARS.toLocaleString()} characters
+                  </p>
+                )}
+              </>
             )}
 
             {f.type === "select" && (
@@ -193,7 +205,7 @@ export default function FormFields({
                 {uploading[f.id] === "done" && value && (
                   <p className="hint good-text">✓ {String(value).split("/").pop()} attached</p>
                 )}
-                <p className="hint">Up to 10 MB.</p>
+                <p className="hint">Up to 10 MB. A photo straight off a phone is often bigger than this — a PDF is safer.</p>
               </div>
             )}
 

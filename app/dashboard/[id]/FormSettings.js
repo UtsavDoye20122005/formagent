@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { uploadLogo } from "../../../lib/uploads.js";
 import { supabaseBrowser } from "../../../lib/supabase/browser.js";
+import { localToInstant, instantToLocalInput } from "../../../lib/schema.js";
 
 const SWATCHES = [
   ["", "Default"],
@@ -15,21 +16,9 @@ const SWATCHES = [
   ["#3f3f46", "Slate"],
 ];
 
-// <input type="datetime-local"> wants "2026-09-20T17:00" in the viewer's own
-// time zone, but the database hands back UTC. This converts one to the other.
-function toLocalInput(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-}
-
 export default function FormSettings({ form, shareUrl, onSaved }) {
   const [open, setOpen] = useState(form.open);
-  const [closesAt, setClosesAt] = useState(toLocalInput(form.closesAt));
+  const [closesAt, setClosesAt] = useState(instantToLocalInput(form.closesAt));
   const [thankYou, setThankYou] = useState(form.thankYou || "");
   const [accent, setAccent] = useState(form.accent || "");
   const [logoUrl, setLogoUrl] = useState(form.logoUrl || "");
@@ -101,7 +90,9 @@ export default function FormSettings({ form, shareUrl, onSaved }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           open,
-          closesAt,
+          // The picker gives a bare wall-clock time. Pin it to this browser's
+          // zone before sending, or the server reads it as UTC.
+          closesAt: closesAt ? localToInstant(closesAt) : "",
           thankYou,
           accent,
           logoUrl,

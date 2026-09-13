@@ -35,16 +35,26 @@ function buildRows(form, responses) {
   return { header, rows };
 }
 
+// Excel and Google Sheets run a cell that begins with = + - or @ as a formula
+// the moment the file is opened. A student who types =1+1 as their name is
+// harmless; one who types a formula that calls out to a web address is not.
+// A leading apostrophe tells both programs "this is text", and it does not
+// show up in the cell.
+function defuse(v) {
+  const s = String(v ?? "");
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
 function toCsv(header, rows) {
   const esc = (v) => {
-    const s = String(v ?? "");
+    const s = defuse(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [header, ...rows].map((r) => r.map(esc).join(",")).join("\n");
 }
 
 function toTsv(header, rows) {
-  const clean = (v) => String(v ?? "").replace(/[\t\n\r]+/g, " ");
+  const clean = (v) => defuse(v).replace(/[\t\n\r]+/g, " ");
   return [header, ...rows].map((r) => r.map(clean).join("\t")).join("\n");
 }
 

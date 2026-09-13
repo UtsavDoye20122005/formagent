@@ -1,9 +1,67 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FormFields from "../../FormFields.js";
 import { validateFieldList } from "../../../lib/schema.js";
 import { uploadFormFile } from "../../../lib/uploads.js";
+
+// A half-filled form is somebody's work. Phones ring, tabs get closed, a lab
+// machine logs you out — none of that should cost twenty answers. The draft
+// lives only in this browser, is never sent anywhere, and is thrown away the
+// moment the form is submitted.
+const DRAFT_VERSION = 1;
+const draftKey = (formId) => `jiffythat.draft.${formId}`;
+
+function readDraft(formId, fields) {
+  try {
+    const raw = window.localStorage.getItem(draftKey(formId));
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || saved.v !== DRAFT_VERSION || !saved.values) return null;
+
+    // The teacher may have edited the form since. Keep only answers that still
+    // belong to a question that exists, and still fit the kind it is now.
+    const kept = {};
+    let count = 0;
+    for (const f of fields) {
+      const value = saved.values[f.id];
+      if (value === undefined) continue;
+      if (f.type === "checkbox") {
+        if (!Array.isArray(value)) continue;
+        const picked = value.filter((v) => f.options?.includes(v));
+        if (picked.length) { kept[f.id] = picked; count++; }
+      } else if (typeof value === "boolean") {
+        if (f.type !== "boolean") continue;
+        kept[f.id] = value; count++;
+      } else if (typeof value === "string" && value !== "") {
+        if (f.type === "checkbox") continue;
+        kept[f.id] = value; count++;
+      }
+    }
+    return count ? { values: kept, step: Number(saved.step) || 0, at: saved.at } : null;
+  } catch {
+    return null; // private window, storage full, storage blocked — never fatal
+  }
+}
+
+function writeDraft(formId, values, step) {
+  try {
+    window.localStorage.setItem(
+      draftKey(formId),
+      JSON.stringify({ v: DRAFT_VERSION, values, step, at: Date.now() })
+    );
+  } catch {
+    /* out of space or blocked — the form still works, it just won't remember */
+  }
+}
+
+function clearDraft(formId) {
+  try {
+    window.localStorage.removeItem(draftKey(formId));
+  } catch {
+    /* nothing to do */
+  }
+}
 
 function deadlineLine(iso) {
   if (!iso) return "";
@@ -33,6 +91,12 @@ export default function PublicForm({ form }) {
   const [failure, setFailure] = useState("");
   const [step, setStep] = useState(0);
   const [uploading, setUploading] = useState({});
+  const [restored, setRestored] = useState(false);
+
+  // Sending is guarded by a ref, not by `busy`. A double-click can land two
+  // clicks before React has re-rendered the disabled button, and that would
+  // register the same student twice.
+  const sending = useRef(false);
 
   // Bot traps. `trap` is a box no person can see; `openedAt` catches a script
   // that fills and fires in well under the time a human needs to read.
@@ -49,10 +113,45 @@ export default function PublicForm({ form }) {
     return [...byPage.keys()].sort((a, b) => a - b).map((p) => byPage.get(p));
   }, [form.fields]);
 
+  // Somebody starting a twenty-question form ten minutes before it shuts
+  // deserves to be told now, not after they have typed the whole thing.
+  const closingSoon = useMemo(() => {
+    if (!form.closesAt) return false;
+    const left = new Date(form.closesAt).getTime() - Date.now();
+    return left > 0 && left < 45 * 60 * 1000;
+  }, [form.closesAt]);
+
   const lastStep = step >= pages.length - 1;
   // Roughly eight seconds a question, rounded up. People deserve to know.
   const minutes = Math.max(1, Math.round((form.fields.length * 8) / 60));
   const current = pages[step] || [];
+
+  // Bring back whatever they had typed last time. Done in an effect rather
+  // than in useState so the server and the browser render the same first pass.
+  useEffect(() => {
+    const draft = readDraft(form.id, form.fields);
+    if (!draft) return;
+    setValues((v) => ({ ...v, ...draft.values }));
+    setStep(Math.min(draft.step, Math.max(0, pages.length - 1)));
+    setRestored(true);
+  }, [form.id, form.fields, pages.length]);
+
+  // Keep the draft current, but not on every keystroke.
+  useEffect(() => {
+    if (done) return;
+    const t = setTimeout(() => writeDraft(form.id, values, step), 400);
+    return () => clearTimeout(t);
+  }, [form.id, values, step, done]);
+
+  function startOver() {
+    clearDraft(form.id);
+    const blank = {};
+    for (const f of form.fields) blank[f.id] = f.type === "checkbox" ? [] : "";
+    setValues(blank);
+    setErrors({});
+    setStep(0);
+    setRestored(false);
+  }
 
   function change(id, value) {
     setValues((v) => ({ ...v, [id]: value }));
@@ -123,6 +222,9 @@ export default function PublicForm({ form }) {
       return;
     }
 
+    if (sending.current) return; // a second click while the first is in flight
+    sending.current = true;
+
     setBusy(true);
     setFailure("");
     setErrors({});
@@ -145,10 +247,17 @@ export default function PublicForm({ form }) {
         return;
       }
       if (!res.ok) throw new Error(data.error || "Could not send your response.");
+
+      // Only now is it safe to forget what they typed.
+      clearDraft(form.id);
       setDone(true);
     } catch (err) {
+      // The form may have closed while they were filling it in, or the network
+      // may have dropped. Either way their answers stay on screen and in the
+      // draft — nothing they wrote is thrown away because the send failed.
       setFailure(String(err.message || err));
     } finally {
+      sending.current = false;
       setBusy(false);
     }
   }
@@ -192,6 +301,22 @@ export default function PublicForm({ form }) {
       )}
 
       <div className="form-body">
+        {restored && !failure && (
+          <div className="note info draft-note">
+            <span>We kept what you had already typed.</span>
+            <button className="btn small ghost" type="button" onClick={startOver}>
+              Start fresh
+            </button>
+          </div>
+        )}
+
+        {closingSoon && (
+          <div className="note warn">
+            This form closes {deadlineLine(form.closesAt)} — finish before then or
+            your answers will not be accepted.
+          </div>
+        )}
+
         {failure && <div className="note bad">{failure}</div>}
         {Object.keys(errors).length > 0 && (
           <div className="note bad">Some answers need a look — see below.</div>

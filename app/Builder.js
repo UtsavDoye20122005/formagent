@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import FormFields from "./FormFields.js";
+import { localToInstant } from "../lib/schema.js";
 
 const WAVE = [0, 130, 260, 90, 200, 40, 310, 160, 70, 240, 110, 20];
 
@@ -225,7 +226,9 @@ export default function Builder({ workspaces: initialWorkspaces = [], loadError 
         body: JSON.stringify({
           form,
           workspaceId: workspaceId || null,
-          closesAt: form.closesAt || "",
+          // Pinned to a real moment here, in this browser's own time zone,
+          // because the server has no idea what zone the person is in.
+          closesAt: form.closesAt ? localToInstant(form.closesAt) : "",
         }),
       });
       if (res.status === 401) {
