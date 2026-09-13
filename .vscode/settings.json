@@ -1,0 +1,13 @@
+{
+  "files.associations": {
+    "supabase/*.sql": "postgres"
+  },
+  "cSpell.words": [
+    "Anveshan", "autofill", "Bhatt", "Chauhan", "Hinglish", "jiffythat",
+    "jsonb", "Kulkarni", "Malhotra", "Menon", "nullif", "plpgsql", "Pillai",
+    "Rathore", "Robowars", "Shetty", "supabase", "timestamptz", "tsvector",
+    "Utsav", "Vercel", "whisper"
+  ],
+  "files.autoSave": "onFocusChange",
+  "files.hotExit": "off"
+}

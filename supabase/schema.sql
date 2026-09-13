@@ -170,6 +170,34 @@ alter table public.responses add column if not exists ip_hash text;
 
 create index if not exists responses_ip_idx on public.responses (ip_hash, submitted_at desc);
 
+-- A fingerprint of the answers themselves, so "has this exact response already
+-- arrived?" is one index lookup. Without it, 500 people submitting at the same
+-- moment would each re-read every submission that arrived just before them.
+-- Written by the database, not the app, so it can never disagree with the row.
+alter table public.responses add column if not exists answers_hash text;
+
+update public.responses
+   set answers_hash = md5(answers::text)
+ where answers_hash is null;
+
+create or replace function public.set_answers_hash()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.answers_hash := md5(coalesce(new.answers, '{}'::jsonb)::text);
+  return new;
+end;
+$$;
+
+drop trigger if exists responses_hash on public.responses;
+create trigger responses_hash
+  before insert or update of answers on public.responses
+  for each row execute function public.set_answers_hash();
+
+create index if not exists responses_dupe_idx
+  on public.responses (form_id, ip_hash, answers_hash, submitted_at desc);
+
 -- Backfill the counter for forms that already have answers.
 update public.forms f
    set response_count = c.n
@@ -240,14 +268,15 @@ begin
     --
     -- A lecture hall on one college connection is ONE sender. The old ceiling
     -- of 40 meant the 41st student in a class was told to come back later,
-    -- which looks exactly like the site being broken. 400 covers any room a
-    -- teacher can fill and still stops a script cold.
+    -- which looks exactly like the site being broken. A fest registration can
+    -- easily be 500 students on one campus connection in a single go, so the
+    -- ceiling is set well above the largest room anyone can fill.
     select count(*) into recent
       from public.responses
      where form_id = new.form_id
        and ip_hash = new.ip_hash
        and submitted_at > now() - interval '1 hour';
-    if recent >= 400 then
+    if recent >= 2000 then
       raise exception 'too_many_from_you';
     end if;
 
@@ -257,19 +286,19 @@ begin
       from public.responses
      where ip_hash = new.ip_hash
        and submitted_at > now() - interval '1 hour';
-    if recent >= 800 then
+    if recent >= 5000 then
       raise exception 'too_many_from_you';
     end if;
   end if;
 
-  -- Whole-form burst, whoever is sending it. A teacher saying "fill it in now"
-  -- to sixty students produces a genuine spike, so this is not a speed limit
-  -- on people — it is the ceiling above which no classroom can be the cause.
+  -- Whole-form burst, whoever is sending it. "Everyone register now" to a hall
+  -- of 500 produces a genuine spike, so this is not a speed limit on people —
+  -- it is the ceiling above which no real audience can be the cause.
   select count(*) into recent
     from public.responses
    where form_id = new.form_id
      and submitted_at > now() - interval '1 minute';
-  if recent >= 600 then
+  if recent >= 2000 then
     raise exception 'too_fast';
   end if;
 
@@ -290,11 +319,14 @@ begin
         where length(v) >= 8
      )
      and exists (
+       -- Matched on a hash rather than by comparing the answers themselves, so
+       -- this stays an index lookup when 500 people send at once instead of
+       -- every submission re-reading every other submission.
        select 1 from public.responses r
         where r.form_id = new.form_id
           and r.ip_hash = new.ip_hash
+          and r.answers_hash = md5(new.answers::text)
           and r.submitted_at > now() - interval '1 minute'
-          and r.answers = new.answers
      )
   then
     raise exception 'already_sent';
