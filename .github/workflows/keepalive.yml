@@ -1,0 +1,60 @@
+# A second, independent daily ping, so the site does not depend on Vercel's
+# scheduler alone. Supabase pauses a free project after about a week with no
+# database activity, and a paused project means every form link stops working.
+#
+# GitHub switches scheduled workflows off after 60 days of repository
+# inactivity — which is exactly the quiet stretch this is meant to cover. So
+# once a month this also makes a tiny commit, which counts as activity and
+# keeps the schedule itself alive.
+
+name: Keep the site awake
+
+on:
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the database
+        run: |
+          echo "Pinging..."
+          code=$(curl -s -o /tmp/body.txt -w "%{http_code}" \
+            --max-time 30 --retry 3 --retry-delay 20 --retry-all-errors \
+            https://formagent-web.vercel.app/api/keepalive)
+          echo "HTTP $code"
+          cat /tmp/body.txt
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Keep-alive failed with HTTP $code. The Supabase project may be asleep or paused."
+            exit 1
+          fi
+          if ! grep -q '"ok":true' /tmp/body.txt; then
+            echo "::error::Endpoint answered but reported a problem."
+            exit 1
+          fi
+          echo "Database answered. Nothing to worry about."
+
+  stay-enabled:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Touch a file on the first of the month
+        run: |
+          if [ "$(date -u +%d)" != "01" ]; then
+            echo "Not the first of the month. Nothing to do."
+            exit 0
+          fi
+          mkdir -p .github
+          date -u +"Last automatic check: %Y-%m-%d" > .github/last-keepalive.txt
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/last-keepalive.txt
+          git diff --staged --quiet || git commit -m "Keep the scheduled check enabled"
+          git push

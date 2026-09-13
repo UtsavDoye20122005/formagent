@@ -11,12 +11,25 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const client = supabasePublic();
   if (!client) {
-    return NextResponse.json({ ok: false, reason: "Supabase is not configured." });
+    // A failing keep-alive has to FAIL, with a status code. Returning 200 and a
+    // quiet "ok: false" is how a site dies without anybody noticing: Vercel's
+    // cron log would show a green tick every day while the project drifted
+    // towards being paused.
+    return NextResponse.json(
+      { ok: false, reason: "Supabase is not configured." },
+      { status: 500 }
+    );
   }
 
+  // A real query, not just a reachable endpoint. Supabase counts database
+  // activity, so pinging a page that never talks to the database would keep
+  // Vercel happy and let Supabase fall asleep anyway.
   const { error } = await client.from("forms").select("id").limit(1);
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message, code: error.code || null });
+    return NextResponse.json(
+      { ok: false, error: error.message, code: error.code || null },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true, pingedAt: new Date().toISOString() });
