@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { getPublicForm, addPublicResponse, listResponses } from "../../../../../lib/db.js";
+import {
+  getPublicForm,
+  addPublicResponse,
+  listResponses,
+  deleteResponses,
+  deleteAllResponses,
+} from "../../../../../lib/db.js";
 import { validateSubmission } from "../../../../../lib/schema.js";
 import { fail, readJson } from "../../../../../lib/api.js";
 import { senderHash } from "../../../../../lib/sender.js";
@@ -63,6 +69,25 @@ export async function GET(request, { params }) {
       size: url.searchParams.get("size"),
       all: url.searchParams.get("all") === "1",
     });
+    if (!result) return NextResponse.json({ error: "Form not found." }, { status: 404 });
+    return NextResponse.json(result);
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+// Owner only. Either a specific set of answers, or — with { all: true } — the
+// lot. There is no way to say "delete everything" by accident: an empty list
+// deletes nothing, and clearing a form takes its own explicit flag.
+export async function DELETE(request, { params }) {
+  try {
+    const { id } = await params;
+    const body = await readJson(request);
+
+    const result = body?.all === true
+      ? await deleteAllResponses(id)
+      : await deleteResponses(id, body?.ids);
+
     if (!result) return NextResponse.json({ error: "Form not found." }, { status: 404 });
     return NextResponse.json(result);
   } catch (err) {

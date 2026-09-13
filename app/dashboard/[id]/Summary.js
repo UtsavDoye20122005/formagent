@@ -308,8 +308,8 @@ function QuestionCard({ field, responses, splitField, segments }) {
     body = (
       <>
         <div className="stats" style={{ marginBottom: 14 }}>
-          <Stat label="answers" value={written.length} />
-          <Stat label="different answers" value={unique} />
+          <Stat label={written.length === 1 ? "answer" : "answers"} value={written.length} />
+          <Stat label={unique === 1 ? "different answer" : "different answers"} value={unique} />
         </div>
         <ul className="quotes">
           {shown.map((w, i) => (

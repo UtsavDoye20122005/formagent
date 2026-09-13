@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import FormSettings from "./FormSettings.js";
 import Summary from "./Summary.js";
 import { signedFileUrl } from "../../../lib/uploads.js";
+import OneResponse from "./OneResponse.js";
 
 const PAGE_SIZE = 25;
 
@@ -92,10 +93,60 @@ function weekOf(responses) {
   return days;
 }
 
+
+// Search looks at every answer plus the timestamp, so "aarav", "2nd year" and
+// "13 Sep" all find the same row. Plain substring matching — anything cleverer
+// would surprise people.
+function filterRows(form, rows, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter((r) => {
+    if (stamp(r.submittedAt).toLowerCase().includes(q)) return true;
+    return form.fields.some((f) => cellText(r.answers?.[f.id]).toLowerCase().includes(q));
+  });
+}
+
+function sortRows(form, rows, sort) {
+  if (!sort) return rows;
+  const field = sort.key === "__when" ? null : form.fields.find((f) => f.id === sort.key);
+  const dir = sort.dir === "desc" ? -1 : 1;
+
+  return [...rows].sort((a, b) => {
+    if (!field) return (new Date(a.submittedAt) - new Date(b.submittedAt)) * dir;
+
+    const av = a.answers?.[field.id];
+    const bv = b.answers?.[field.id];
+
+    // Numbers and ratings sort as numbers, or 7 lands between 69 and 8.
+    if (field.type === "number" || field.type === "rating") {
+      // Number(null) and Number("") are both 0, which would rank someone who
+      // skipped the question below someone who genuinely scored 1.
+      const num = (v) =>
+        v === null || v === undefined || String(v).trim() === "" ? NaN : Number(v);
+      const an = num(av), bn = num(bv);
+      const aok = Number.isFinite(an), bok = Number.isFinite(bn);
+      if (aok && bok) return (an - bn) * dir;
+      if (aok !== bok) return aok ? -1 : 1; // blanks stay at the bottom either way
+      return 0;
+    }
+
+    // Blanks always sit at the bottom, whichever way the column is pointing.
+    const at = cellText(av), bt = cellText(bv);
+    if (!at && !bt) return 0;
+    if (!at) return 1;
+    if (!bt) return -1;
+    return at.localeCompare(bt, undefined, { numeric: true, sensitivity: "base" }) * dir;
+  });
+}
+
 export default function Responses({ formId }) {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
   const [view, setView] = useState("table");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState(null); // { key, dir }
+  const [cursor, setCursor] = useState(0); // which one the individual view is on
+  const [busy, setBusy] = useState("");
   const [everything, setEverything] = useState(null); // all rows, fetched on demand
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -142,11 +193,38 @@ export default function Responses({ formId }) {
     }
   }, [everything, formId]);
 
+  // Searching and sorting look across every response, not just the page you can
+  // see, so the moment either is switched on we quietly pull the rest in.
+  const wantsAll = Boolean(query.trim()) || Boolean(sort) || view === "one";
+  useEffect(() => {
+    if (wantsAll) fetchAll();
+  }, [wantsAll, fetchAll]);
+
   if (error) return <div className="note bad">{error}</div>;
   if (!data) return <p className="empty">Loading…</p>;
 
-  const { form, responses, total } = data;
-  const pageCount = Math.max(1, Math.ceil((total || 0) / PAGE_SIZE));
+  const { form, total } = data;
+
+  // Searching, sorting and stepping through one at a time all need every row,
+  // not the page in front of you. The paged fetch stays the default so a form
+  // with thousands of answers still opens instantly.
+  const needsAll = wantsAll;
+  const awaitingAll = needsAll && !everything;
+  const allRows = everything?.responses || null;
+  const source = needsAll && allRows ? allRows : data.responses;
+
+  const filtered = filterRows(form, source, query);
+  const sorted = sortRows(form, filtered, sort);
+
+  // Client-side paging once we hold everything; server paging otherwise.
+  const pageCount = needsAll && allRows
+    ? Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
+    : Math.max(1, Math.ceil((total || 0) / PAGE_SIZE));
+  const responses = needsAll && allRows
+    ? sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    : sorted;
+  const shownTotal = needsAll && allRows ? sorted.length : total;
+
   const { header } = buildRows(form, responses);
 
   const shareUrl =
@@ -185,6 +263,56 @@ export default function Responses({ formId }) {
   function refresh() {
     setEverything(null);
     load();
+  }
+
+  async function removeResponses(payload, label) {
+    setBusy(label);
+    setError("");
+    try {
+      const res = await fetch(`/api/forms/${formId}/responses`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.error || "Could not delete that.");
+      setEverything(null);
+      await load();
+    } catch (err) {
+      setError(String(err.message || err));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function deleteOne(id) {
+    if (!window.confirm("Delete this response? This cannot be undone.")) return;
+    // Stay roughly where you were rather than jumping back to the first one.
+    setCursor((c) => Math.max(0, c - 1));
+    removeResponses({ ids: [id] }, "one");
+  }
+
+  function deleteEverything() {
+    const typed = window.prompt(
+      `This deletes all ${total} responses to "${form.title}" and cannot be undone.\n\nType DELETE to confirm.`
+    );
+    if (typed !== "DELETE") return;
+    removeResponses({ all: true }, "all");
+  }
+
+  function toggleSort(key) {
+    setPage(1);
+    setSort((cur) => {
+      if (!cur || cur.key !== key) return { key, dir: "asc" };
+      if (cur.dir === "asc") return { key, dir: "desc" };
+      return null; // third click clears it
+    });
+  }
+
+  async function showOne() {
+    setView("one");
+    setCursor(0);
+    await fetchAll();
   }
 
   async function downloadCsv() {
@@ -283,29 +411,54 @@ export default function Responses({ formId }) {
       {total > 0 && (
         <div className="spread" style={{ marginBottom: 12 }}>
           <div className="view-tabs">
-            <button
-              className={`btn small${view === "summary" ? " on" : ""}`}
-              onClick={showSummary}
-            >
+            <button className={`btn small${view === "summary" ? " on" : ""}`} onClick={showSummary}>
               Summary
             </button>
-            <button
-              className={`btn small${view === "table" ? " on" : ""}`}
-              onClick={() => setView("table")}
-            >
+            <button className={`btn small${view === "table" ? " on" : ""}`} onClick={() => setView("table")}>
               Every answer
             </button>
+            <button className={`btn small${view === "one" ? " on" : ""}`} onClick={showOne}>
+              One at a time
+            </button>
           </div>
-          {view === "table" && pageCount > 1 && (
-            <p className="hint" style={{ margin: 0 }}>
-              Page {page} of {pageCount}
-            </p>
+
+          {view === "table" && (
+            <div className="row" style={{ flexWrap: "nowrap" }}>
+              <input
+                type="search"
+                value={query}
+                placeholder="Search every answer…"
+                aria-label="Search responses"
+                onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                style={{ width: 240 }}
+              />
+              <button
+                className="btn small danger"
+                onClick={deleteEverything}
+                disabled={busy === "all"}
+              >
+                {busy === "all" ? "Deleting…" : "Delete all"}
+              </button>
+            </div>
           )}
         </div>
       )}
 
-      {view === "summary" ? (
-        working && !everything ? (
+      {view === "one" ? (
+        awaitingAll ? (
+          <p className="empty">Loading every response…</p>
+        ) : (
+          <OneResponse
+            form={form}
+            responses={sorted}
+            index={Math.min(cursor, Math.max(0, sorted.length - 1))}
+            onIndex={(i) => setCursor(Math.max(0, Math.min(i, sorted.length - 1)))}
+            onDelete={deleteOne}
+            FileCell={FileCell}
+          />
+        )
+      ) : view === "summary" ? (
+        !everything ? (
           <p className="empty">Working it out…</p>
         ) : (
           <Summary form={form} responses={everything?.responses || []} />
@@ -317,14 +470,37 @@ export default function Responses({ formId }) {
               <div className="empty">
                 <p style={{ margin: 0 }}>No responses yet. Share the link above.</p>
               </div>
+            ) : awaitingAll ? (
+              <p className="empty">Searching every response…</p>
+            ) : responses.length === 0 ? (
+              <div className="empty">
+                <p style={{ margin: 0 }}>Nothing matches “{query}”.</p>
+              </div>
             ) : (
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      {header.map((h, i) => (
-                        <th key={i}>{h}</th>
-                      ))}
+                      {[{ key: "__when", label: "Submitted at" },
+                        ...form.fields.map((f) => ({ key: f.id, label: f.label }))
+                      ].map((col) => {
+                        const on = sort?.key === col.key;
+                        return (
+                          <th key={col.key}>
+                            <button
+                              className={`th-sort${on ? " on" : ""}`}
+                              onClick={() => toggleSort(col.key)}
+                              title="Sort by this column"
+                            >
+                              {col.label}
+                              <span aria-hidden="true">
+                                {on ? (sort.dir === "asc" ? "↑" : "↓") : "↕"}
+                              </span>
+                            </button>
+                          </th>
+                        );
+                      })}
+                      <th><span className="sr-only">Delete</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -341,12 +517,23 @@ export default function Responses({ formId }) {
                             );
                           }
                           const text = cellText(raw);
+                          const long = text.length > 40;
                           return (
-                            <td key={f.id} className={text.length > 40 ? "wrap" : undefined}>
-                              {text}
+                            <td key={f.id} className={long ? "wrap" : undefined} title={long ? text : undefined}>
+                              {long ? <span className="clamp">{text}</span> : text}
                             </td>
                           );
                         })}
+                        <td>
+                          <button
+                            className="btn small ghost row-del"
+                            onClick={() => deleteOne(r.id)}
+                            title="Delete this response"
+                            aria-label="Delete this response"
+                          >
+                            ✕
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -365,7 +552,9 @@ export default function Responses({ formId }) {
                 ← Newer page
               </button>
               <span className="hint">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+                Showing {(page - 1) * PAGE_SIZE + 1}–
+                {Math.min(page * PAGE_SIZE, shownTotal)} of {shownTotal}
+                {query.trim() && <> matching “{query}”</>}
               </span>
               <button
                 className="btn small"
