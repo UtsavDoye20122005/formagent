@@ -14,7 +14,7 @@ Live at **[formagent-web.vercel.app](https://formagent-web.vercel.app)**
 ## Why I built it
 
 A teacher at my college needed a registration form and didn't want to spend
-twenty minutes dragging fields around in Google Forms. She wanted to say what she
+twenty minutes dragging fields around in Google Forms. He wanted to say what he
 needed and be done.
 
 That turned out to be the easy half. The hard half was everything that happens
